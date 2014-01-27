@@ -4,14 +4,18 @@ module.exports = function (grunt) {
     copy: {
       target: {
         files: [
-          {expand: true, src: ['app.js', 'config.js', 'config.json', 'package.json', 'express/**'], dest: 'build/'}
+          {expand: true, src: ['app.js', 'config.js', 'config.json', 'Gruntfile.js', 'package.json', 'express/**', 'network/**'], dest: 'build/'}
         ]
       }
     },
     shell: {
-      arm: {
+      install: {
         options: { stdout: true },
         command: 'npm install nrf'
+      },
+      nrf:{
+        options: { stdout: true },
+        command: 'supervisor -e html,js network/nrfWrapper.js'
       }
     },
     scp: {
@@ -32,8 +36,10 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-shell');
   grunt.loadNpmTasks('grunt-scp');
 
+  grunt.registerTask('install', ['shell:install']);
+  grunt.registerTask('nrf', ['shell:nrf']);
+
   grunt.registerTask('build', ['copy']);
-  grunt.registerTask('arm', ['shell:arm']);
   grunt.registerTask('andries', ['build', 'scp:andries']);
 
   grunt.registerTask('default', ['build']);
