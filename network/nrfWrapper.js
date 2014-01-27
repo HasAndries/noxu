@@ -1,3 +1,4 @@
+var http = require('http');
 var express = require('express');
 var path = require('path');
 var url = require('url');
@@ -16,19 +17,19 @@ app.use(app.router);
 
 //########## WEB ROUTES ##########
 app.get('/', function(req,res){
-  req.end('nrf wrapper');
+  res.end('nrf wrapper');
 });
 app.post('/config', function(req,res){
   configure(req.body);
-  req.end();
+  res.end();
 });
 app.post('/send', function(req,res){
   send(req.body);
-  req.end();
+  res.end();
 });
 app.post('/setReceiver', function(req,res){
   setReceiver(req.body);
-  req.end();
+  res.end();
 });
 //########## NRF ##########
 var nrf = require('nrf');
@@ -91,3 +92,8 @@ exports.setReceiver = function(options){
     'Content-Length': 0
   };
 };
+
+//run server
+http.createServer(app).listen(app.get('port'), function () {
+  console.log('Express server listening on port ' + app.get('port'));
+});

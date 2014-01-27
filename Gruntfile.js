@@ -4,7 +4,8 @@ module.exports = function (grunt) {
     copy: {
       target: {
         files: [
-          {expand: true, src: ['app.js', 'config.js', 'config.json', 'Gruntfile.js', 'package.json', 'express/**', 'network/**'], dest: 'build/'}
+          {expand: true, src: ['app.js', 'config.js', 'config.json', 'package.json', 'express/**', 'network/**',
+          'andries', 'server', 'nrf'], dest: 'build/'}
         ]
       }
     },
@@ -12,10 +13,6 @@ module.exports = function (grunt) {
       install: {
         options: { stdout: true },
         command: 'npm install nrf'
-      },
-      nrf:{
-        options: { stdout: true },
-        command: 'supervisor -e html,js network/nrfWrapper.js'
       }
     },
     scp: {
