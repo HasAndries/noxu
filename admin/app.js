@@ -29,10 +29,10 @@ module.exports = {
     });
 
     //routes
-    var home = require('./routes/home');
-    var settings = require('./routes/settings');
-    app.get('/', home.index);
-    app.get('/settings', settings.index);
+    app.get('/', require('./routes/home').index);
+    app.get('/test', require('./routes/test').index);
+    app.get('/settings', require('./routes/settings').index);
+    require('./routes/api').attach(app);
     //special routes
     var layout = require('./routes/layout');
     app.get('/main.css', layout.css);

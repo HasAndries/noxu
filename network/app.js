@@ -80,9 +80,6 @@ function postData(pipe, data) {
   var req = http.request(receiver);
   req.end({pipe: pipe, data: data});
 };
-function configure(options) {
-  configure(options);
-};
 function send(options) {
   var output = radio.openPipe('tx', options.address);
   output.write(options.data);

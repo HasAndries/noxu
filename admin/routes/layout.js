@@ -1,7 +1,8 @@
 exports.renderObjects = {
   menuItems: [
     {name: 'home', link: '/'},
-    {name: 'settings', link: '/settings'}
+    {name: 'settings', link: '/settings'},
+    {name: 'test', link: '/test'}
   ]
 };
 
