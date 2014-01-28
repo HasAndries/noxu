@@ -4,8 +4,9 @@ module.exports = function (grunt) {
     copy: {
       target: {
         files: [
-          {expand: true, src: ['app.js', 'config.js', 'config.json', 'package.json', 'express/**', 'network/**',
-          'andries', 'server', 'nrf'], dest: 'build/'}
+          {expand: true, src: ['app.js', 'admin.js', 'network.js',
+            'config.js', 'config.json', 'package.json', 'admin/**', 'network/**',
+          'run-*'], dest: 'build/'}
         ]
       }
     },

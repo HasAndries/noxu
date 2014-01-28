@@ -1,1 +1,0 @@
-supervisor -e js network/nrfWrapper.js
