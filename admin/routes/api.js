@@ -1,7 +1,7 @@
 var api = {};
 //---------- nodes ----------
 api.nodes = function(req, res){
-  
+
 };
 //---------- configure ----------
 api.configure = function(req, res){

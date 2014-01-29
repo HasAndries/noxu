@@ -1,8 +1,8 @@
 var http = require('http');
-var config = require('./config');
+var config = require('./config')();
 
 var admin = require('./admin/app').build(config);
-var network = require('./network/app').build(config);
+var rfClient = require('./network/rfClient')(config);
 
 //run server
 http.createServer(admin).listen(admin.get('port'), function () {
@@ -10,6 +10,6 @@ http.createServer(admin).listen(admin.get('port'), function () {
 });
 
 //run server
-http.createServer(network).listen(network.get('port'), function () {
-  console.log('Network server listening on port ' + network.get('port'));
+http.createServer(rfClient.app).listen(rfClient.app.get('port'), function () {
+  console.log('Network Client listening on port ' + rfClient.app.get('port'));
 });

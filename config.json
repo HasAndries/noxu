@@ -3,11 +3,9 @@
 
     },
     "development": {
-        "galleryPath": "./public/test_content/gallery",
-        "galleryPublicPath": "/test_content/gallery"
+        "serverUrl": "http://10.0.0.236:9100/"
     },
     "production": {
-        "galleryPath": "./public/content/gallery",
-        "galleryPublicPath": "/content/gallery"
+
     }
 }
