@@ -1,5 +1,6 @@
 var http = require('http');
 var express = require('express');
+var extend = require('node.extend');
 var path = require('path');
 var url = require('url');
 var nrf = require('nrf');
@@ -27,7 +28,7 @@ module.exports = function () {
   //---------- configure ----------
   app.post('/configure', function (req, res) {
     try {
-      configure(req.body, rfServer.client, rfServer.inbound, rfServer.radio);
+      configure(req.body, rfServer.client, rfServer.inbound);
     }
     catch (err) {
       res.write(JSON.stringify(err));
@@ -42,16 +43,17 @@ module.exports = function () {
   rfServer.app = app;
 
   //---------- configure ----------
-  function configure(options, client, inbound, radio) {
-    var config = $.extend({
+  function configure(options, client, inbound) {
+    console.log(['CONFIGURE>>', JSON.stringify(options)].join(''));
+    var config = extend({
       channel: 0,
       dataRate: '1Mbps',
       crcBytes: 1,
       retryCount: 1,
       retryDelay: 250,
       spiDev: '/dev/spidev0.0',
-      pinCe: 18,
-      pinIrq: 22,
+      pinCe: 24,
+      pinIrq: 25,
       broadcastAddress: 0xF0F0F0F0F0,
       commandAddress: 0xF0F0F0F0F1
     }, options);
@@ -60,27 +62,40 @@ module.exports = function () {
       inbound.broadcast.end();
       inbound.command.end();
     }
+    inbound = {};
     //clientUrl
     if (!options.clientUrl) throw new error('Need a clientUrl')
     client = url.parse(options.clientUrl);
     client.method = 'POST';
     client.headers = { 'Content-Type': 'application/json', 'Content-Length': 0 };
     //setup radio
-    radio = nrf.connect(_config.spiDev, _config.pinCe, _config.pinIrq);
-    radio.channel(_config.channel).dataRate(_config.dataRate).crcBytes(_config.crcBytes).autoRetransmit({count: _config.retryCount, delay: _config.retryDelay});
-    radio.begin();
+    var radio = nrf.connect(config.spiDev, config.pinCe, config.pinIrq);
+    radio.channel(config.channel).dataRate(config.dataRate).crcBytes(config.crcBytes).autoRetransmit({count: config.retryCount, delay: config.retryDelay});
     //setup radio pipes
-    inbound = {};
-    radio.on('ready', function () {
+    radio.begin(function () {
       inbound.broadcast = radio.openPipe('rx', config.broadcastAddress);
-      inbound.broadcast.on('readable', function () {
-        clientReceive(config.broadcastAddress, inbound.broadcast.read());
+      inbound.broadcast.on('data', function (data) {
+        console.log('DATA ON THE WAY!!!');
+        console.log(['INBOUND>>', JSON.stringify(data)].join(''));
+        clientReceive(config.broadcastAddress, data);
+      });
+      inbound.broadcast.on('error', function(err){
+        console.log(['ERROR COMMAND>>', err].join(''));
       });
       inbound.command = radio.openPipe('rx', config.commandAddress);
-      inbound.command.on('readable', function () {
-        clientReceive(config.commandAddress, inbound.command.read());
+      inbound.command.on('data', function (data) {
+        console.log('DATA ON THE WAY!!!');
+        console.log(['INBOUND>>', JSON.stringify(data)].join(''));
+        clientReceive(config.commandAddress, data);
+      });
+      inbound.command.on('error', function(err){
+        console.log(['ERROR COMMAND>>', err].join(''));
       });
     });
+    radio.on('ready', function(){
+      console.log('********** READY **********')
+    });
+    rfServer.radio = radio;
   };
   //---------- postData ----------
   function clientReceive(address, data) {
@@ -92,9 +107,16 @@ module.exports = function () {
   };
   //---------- send ----------
   function send(radio, options) {
-    var output = radio.openPipe('tx', options.address);
-    output.write(options.data);
-    output.end();
+    try{
+      var output = radio.openPipe('tx', options.address);
+      output.on('error', function(err){
+        console.log(['ERROR SENDING>>', err].join(''));
+      });
+      output.write(options.data);
+      output.end();
+    }catch(error){
+      console.log(['ERROR SENDING>>', error].join(''));
+    }
   };
 
   return rfServer;

@@ -5,7 +5,7 @@ var commandMessage = require('commandMessage')
 var client, nodes;
 
 //========== build ==========
-exports.build = function (config) {
+exports = function (config) {
   var network = new events.EventEmitter();
   //---------- PROPERTIES ----------
   var pipes = {
@@ -14,19 +14,21 @@ exports.build = function (config) {
     command: { id: 1, address: 0xF0F0F0F0F1 }
   };
   nodes = {};
-  client = require('rfClient').build();
+  client = require('rfClient')();
+  client.on('receive', function(json){
+    var message = commandMessage.fromBuffer(json.data);
+    console.log(['INBOUND>>', JSON.stringify(json)].join(''));
+  });
   //---------- broadcast ----------
   network.broadcast = function (instruction, data) {
     var message = commandMessage.build(instruction, data);
-    var output = radio.openPipe('tx', pipes.broadcast.address);
-    output.write(message.buildBuffer())
+    client.send(pipes.broadcast.address, message.buildBuffer());
   };
   //---------- command ----------
   network.command = function (destinationId, instruction, data) {
     var address = pipes.base+destinationId;
     var message = commandMessage.build(instruction, data);
-    var output = radio.openPipe('tx', address);
-    output.write(message.buildBuffer())
+    client.send(address, message.toBuffer());
   };
 
 };

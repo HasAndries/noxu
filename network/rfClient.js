@@ -29,22 +29,23 @@ module.exports = function (config) {
   });
   rfClient.app = app;
 
-  configure(config, rfClient.server);
+  configure(config);
+  //========== PRIVATE ==========
   //---------- configure ----------
   function configure(options, server) {
     var config = extend({
       channel: 0,
       dataRate: '1Mbps',
       crcBytes: 1,
-      retryCount: 1,
+      retryCount: 10,
       retryDelay: 250,
       spiDev: '/dev/spidev0.0',
-      pinCe: 18,
-      pinIrq: 22,
+      pinCe: 24,
+      pinIrq: 25,
       broadcastAddress: 0xF0F0F0F0F0,
       commandAddress: 0xF0F0F0F0F1
     }, options);
-    if (!options.serverUrl) throw new Error('Need a serverUrl')
+    if (!options.serverUrl) throw new Error('Need a serverUrl');
     //serverUrl
     server = url.parse(options.serverUrl);
     server.method = 'POST';
@@ -59,21 +60,28 @@ module.exports = function (config) {
     request.path = '/configure/';
     var req = http.request(request);
     req.end(data);
+    rfClient.server = server;
   }
-
-  //---------- send ----------
-  function send(address, data) {
-    var request = extend({}, server);
-    request.headers['Content-Length'] = data.length;
-    request.path = '/send/';
-    var req = http.request(request);
-    req.end({address: address, data: data});
-  }
-
   //---------- receive ----------
   function receive(data) {
     rfClient.emit('receive', data);
   }
+
+  //========== PUBLIC ==========
+  //---------- send ----------
+  rfClient.send = function(address, data) {
+    var request = extend({}, rfClient.server);
+    var json = JSON.stringify({address: address, data: data});
+    request.headers['Content-Length'] = json.length;
+    request.path = '/send/';
+    var req = http.request(request);
+    req.end(json);
+  };
+
+  setTimeout(function(){
+    rfClient.send('0xF0F0F0F0F0', '5254354353');
+  }, 1000);
+
 
   return rfClient;
 };

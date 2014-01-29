@@ -2,6 +2,10 @@ exports.build = function(instruction, data){
 
 };
 
-exports.buildBuffer = function(){
+exports.fromBuffer = function(buffer){
+
+}
+
+exports.toBuffer = function(){
 
 }
