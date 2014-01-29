@@ -5,7 +5,7 @@ var url = require('url');
 var nrf = require('nrf');
 
 module.exports = function () {
-  var rfServer = require('events').EventEmitter();
+  var rfServer = require('events').EventEmitter;
   rfServer.client = null;
   rfServer.app = null;
   rfServer.inbound = null;
@@ -30,7 +30,7 @@ module.exports = function () {
       configure(req.body, rfServer.client, rfServer.inbound, rfServer.radio);
     }
     catch (err) {
-      res.write(err);
+      res.write(JSON.stringify(err));
     }
     res.end();
   });
