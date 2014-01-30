@@ -73,24 +73,24 @@ module.exports = function () {
     radio.channel(config.channel).dataRate(config.dataRate).crcBytes(config.crcBytes).autoRetransmit({count: config.retryCount, delay: config.retryDelay});
     //setup radio pipes
     radio.begin(function () {
-      inbound.broadcast = radio.openPipe('rx', config.broadcastAddress);
-      inbound.broadcast.on('data', function (data) {
-        console.log('DATA ON THE WAY!!!');
-        console.log(['INBOUND>>', JSON.stringify(data)].join(''));
-        clientReceive(config.broadcastAddress, data);
-      });
-      inbound.broadcast.on('error', function (err) {
-        console.log(['ERROR COMMAND>>', err].join(''));
-      });
-      inbound.command = radio.openPipe('rx', config.commandAddress);
-      inbound.command.on('data', function (data) {
-        console.log('DATA ON THE WAY!!!');
-        console.log(['INBOUND>>', JSON.stringify(data)].join(''));
-        clientReceive(config.commandAddress, data);
-      });
-      inbound.command.on('error', function (err) {
-        console.log(['ERROR COMMAND>>', err].join(''));
-      });
+//      inbound.broadcast = radio.openPipe('rx', config.broadcastAddress);
+//      inbound.broadcast.on('data', function (data) {
+//        console.log('DATA ON THE WAY!!!');
+//        console.log(['INBOUND>>', JSON.stringify(data)].join(''));
+//        clientReceive(config.broadcastAddress, data);
+//      });
+//      inbound.broadcast.on('error', function (err) {
+//        console.log(['ERROR COMMAND>>', err].join(''));
+//      });
+//      inbound.command = radio.openPipe('rx', config.commandAddress);
+//      inbound.command.on('data', function (data) {
+//        console.log('DATA ON THE WAY!!!');
+//        console.log(['INBOUND>>', JSON.stringify(data)].join(''));
+//        clientReceive(config.commandAddress, data);
+//      });
+//      inbound.command.on('error', function (err) {
+//        console.log(['ERROR COMMAND>>', err].join(''));
+//      });
     });
     radio.on('ready', function () {
       //console.log('********** READY **********')

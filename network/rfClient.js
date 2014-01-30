@@ -34,11 +34,11 @@ module.exports = function (config) {
   //---------- configure ----------
   function configure(options, server) {
     var config = extend({
-      channel: 0,
+      channel: 62,
       dataRate: '1Mbps',
-      crcBytes: 1,
-      retryCount: 10,
-      retryDelay: 250,
+      crcBytes: 2,
+      retryCount: 15,
+      retryDelay: 500,
       spiDev: '/dev/spidev0.0',
       pinCe: 24,
       pinIrq: 25,
