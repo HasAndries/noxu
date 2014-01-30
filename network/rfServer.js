@@ -79,7 +79,7 @@ module.exports = function () {
         console.log(['INBOUND>>', JSON.stringify(data)].join(''));
         clientReceive(config.broadcastAddress, data);
       });
-      inbound.broadcast.on('error', function(err){
+      inbound.broadcast.on('error', function (err) {
         console.log(['ERROR COMMAND>>', err].join(''));
       });
       inbound.command = radio.openPipe('rx', config.commandAddress);
@@ -88,13 +88,14 @@ module.exports = function () {
         console.log(['INBOUND>>', JSON.stringify(data)].join(''));
         clientReceive(config.commandAddress, data);
       });
-      inbound.command.on('error', function(err){
+      inbound.command.on('error', function (err) {
         console.log(['ERROR COMMAND>>', err].join(''));
       });
     });
-    radio.on('ready', function(){
-      console.log('********** READY **********')
+    radio.on('ready', function () {
+      //console.log('********** READY **********')
     });
+    radio.printDetails();
     rfServer.radio = radio;
   };
   //---------- postData ----------
@@ -107,16 +108,13 @@ module.exports = function () {
   };
   //---------- send ----------
   function send(radio, options) {
-    try{
-      var output = radio.openPipe('tx', options.address);
-      output.on('error', function(err){
-        console.log(['ERROR SENDING>>', err].join(''));
-      });
-      output.write(options.data);
-      output.end();
-    }catch(error){
-      console.log(['ERROR SENDING>>', error].join(''));
-    }
+    var output = radio.openPipe('tx', options.address);
+    output.on('error', function (err) {
+      console.log(['ERROR SENDING>>', err].join(''));
+    });
+    console.log(['SEND>>', JSON.stringify(options)].join(''));
+    output.write(new Buffer(options.data));
+    output.end();
   };
 
   return rfServer;

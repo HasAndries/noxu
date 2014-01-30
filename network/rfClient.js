@@ -72,6 +72,7 @@ module.exports = function (config) {
   rfClient.send = function(address, data) {
     var request = extend({}, rfClient.server);
     var json = JSON.stringify({address: address, data: data});
+    console.log(['SEND>>', json].join(''));
     request.headers['Content-Length'] = json.length;
     request.path = '/send/';
     var req = http.request(request);
@@ -79,7 +80,7 @@ module.exports = function (config) {
   };
 
   setTimeout(function(){
-    rfClient.send('0xF0F0F0F0F0', '5254354353');
+    rfClient.send(0xF0F0F0F0F0, new Buffer([0,0,1,0,100]));
   }, 1000);
 
 
