@@ -1,7 +1,25 @@
-SettingsController.$inject = ['$scope', '$http', 'url'];
-function SettingsController($scope, $http, url) {
+TestController.$inject = ['$scope', '$http', 'url'];
+function TestController($scope, $http, url) {
+  $scope.configServerUrl = 'http://10.0.0.236:9100';
+  $scope.broadcastInstruction = 1;
+  $scope.broadcastData = '123';
   $scope.configure = function () {
-    $http({method: 'POST', url: [url.api, 'configure'].join('')}).
+    var fullUrl = [url.api, 'configure'].join('');
+    var httpData = {
+      serverUrl: $scope.configServerUrl
+    }
+    $http({method: 'POST', url: fullUrl, data: JSON.stringify(httpData)}).
+      success(function (data, status) {
+
+      }).
+      error(function (data, status) {
+
+      });
+  };
+  $scope.broadcast = function () {
+    var fullUrl = [url.api, 'broadcast'].join('');
+    var httpData = {instruction:  $scope.broadcastInstruction, data:  $scope.broadcastData};
+    $http({method: 'POST', url: fullUrl, data: httpData}).
       success(function (data, status) {
 
       }).

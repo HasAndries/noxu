@@ -5,6 +5,24 @@
 
 {= block content =}
 <div class="content test {{ displayMode }} hidden-xs hidden-sm" ng-controller="TestController">
-
+    <div class="row">
+        <div class="col-md-4">
+            <h3>Configure</h3>
+            <label>ServerUrl<input type="text" class="form-control" ng-model="configServerUrl"/></label>
+            <br>
+            <input type="button" class="btn btn-primary" value="Configure" ng-click="configure()"/>
+        </div>
+        <div class="col-md-4">
+            <h3>Broadcast</h3>
+            <label>Instruction<input type="text" class="form-control" ng-model="broadcastInstruction"/></label>
+            <br>
+            <label>Data<input type="text" class="form-control" ng-model="broadcastData"/></label>
+            <br>
+            <input type="button" class="btn btn-primary" value="Broadcast" ng-click="broadcast()"/>
+        </div>
+        <div class="col-md-4">
+            <h3>Command</h3>
+        </div>
+    </div>
 </div>
 {= endblock =}

@@ -32,7 +32,7 @@ module.exports = {
     app.get('/', require('./routes/home').index);
     app.get('/test', require('./routes/test').index);
     app.get('/settings', require('./routes/settings').index);
-    require('./routes/api').attach(app);
+    require('./routes/api')(app);
     //special routes
     var layout = require('./routes/layout');
     app.get('/main.css', layout.css);

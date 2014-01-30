@@ -3,9 +3,10 @@ var extend = require('node.extend');
 var express = require('express');
 var path = require('path');
 var url = require('url');
+var EventEmitter = require('events').EventEmitter
 
-module.exports = function (config) {
-  var rfClient = require('events').EventEmitter;
+module.exports = function (options) {
+  var rfClient = new EventEmitter();
   rfClient.app = null;
   rfClient.server = null;
   //========== EXPRESS APP ==========
@@ -28,13 +29,11 @@ module.exports = function (config) {
     res.end();
   });
   rfClient.app = app;
-
-  configure(config);
   //========== PRIVATE ==========
   //---------- configure ----------
   function configure(options, server) {
     var config = extend({
-      channel: 62,
+      channel: 0x4c,
       dataRate: '1Mbps',
       crcBytes: 2,
       retryCount: 15,
@@ -78,12 +77,10 @@ module.exports = function (config) {
     var req = http.request(request);
     req.end(json);
   };
-
-  setTimeout(function(){
-    rfClient.send(0xF0F0F0F0F0, new Buffer([0,0,1,0,100]));
-  }, 1000);
-
-
+  //---------- configure ----------
+  rfClient.configure = function(config) {
+    configure(config);
+  };
   return rfClient;
 };
 
