@@ -1,8 +1,8 @@
-function isBitSet (b, n) {
+function isBitSet(b, n) {
   var mask = [128, 64, 32, 16, 8, 4, 2, 1];
   return ((b & mask[n]) != 0);
 }
-function setBit(b, n, on){
+function setBit(b, n, on) {
   var mask = [128, 64, 32, 16, 8, 4, 2, 1];
   if (on)
     return b |= mask[n];
@@ -16,8 +16,8 @@ function CommandMessage(bufferSize) {
   _this.control = 0;
   _this.fromCommander = 0;
   _this.instruction = null;
-  _this.data = null;
-  _this.hops = null;
+  _this.data = [];
+  _this.hops = [];
 
   this.validate = function () {
     return _this.data.length + _this.hops.length + 4 < _this.bufferSize && _this.data.length + _this.hops.length > 0;
@@ -30,11 +30,11 @@ function CommandMessage(bufferSize) {
     buffer[2] = _this.data.length;
     buffer[3] = _this.hops.length;
     _this.data.copy(buffer, 4, 0);
-    _this.hops.copy(buffer, 4+data.length, 0);
+    _this.hops.copy(buffer, 4 + _this.data.length, 0);
     return buffer;
   };
 }
-exports = function (options) {
+module.exports = function (options) {
   var message = new CommandMessage(options.bufferSize);
   if (options.buffer && typeof options.buffer == 'Buffer') {
     message.control = options.readUInt8(0);

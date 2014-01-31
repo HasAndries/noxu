@@ -66,6 +66,7 @@ module.exports = function () {
       rfServer.inbound.broadcast.end();
       rfServer.inbound.command.end();
     }
+    rfServer.inbound = {};
     //clientUrl
     if (!options.clientUrl) throw new error('Need a clientUrl')
     rfServer.client = url.parse(options.clientUrl);
@@ -76,7 +77,7 @@ module.exports = function () {
     rfServer.radio.channel(config.channel).transmitPower('PA_MAX').dataRate(config.dataRate).crcBytes(config.crcBytes).autoRetransmit({count: config.retryCount, delay: config.retryDelay});
     //setup radio pipes
     rfServer.radio.begin(function () {
-      rfServer.inbound.broadcast = radio.openPipe('rx', config.broadcastAddress);
+      rfServer.inbound.broadcast = rfServer.radio.openPipe('rx', config.broadcastAddress);
       rfServer.inbound.broadcast.on('data', function (data) {
         console.log('DATA ON THE WAY!!!');
         console.log(['INBOUND>>', JSON.stringify(data)].join(''));
@@ -85,7 +86,7 @@ module.exports = function () {
       rfServer.inbound.broadcast.on('error', function (err) {
         console.log(['ERROR COMMAND>>', err].join(''));
       });
-      rfServer.inbound.command = radio.openPipe('rx', config.commandAddress);
+      rfServer.inbound.command = rfServer.radio.openPipe('rx', config.commandAddress);
       rfServer.inbound.command.on('data', function (data) {
         console.log('DATA ON THE WAY!!!');
         console.log(['INBOUND>>', JSON.stringify(data)].join(''));

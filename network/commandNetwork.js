@@ -3,6 +3,7 @@ var extend = require('node.extend');
 var commandMessage = require('./commandMessage')
 
 var client, nodes;
+var bufferSize = 32;
 
 //========== build ==========
 module.exports = function (config) {
@@ -25,7 +26,8 @@ module.exports = function (config) {
   };
   //---------- broadcast ----------
   network.broadcast = function (instruction, data) {
-    var message = commandMessage({instruction: instruction, data: data});
+    //todo only send though Buffer
+    var message = commandMessage({instruction: instruction, data: data, bufferSize: bufferSize});
     client.send(pipes.broadcast.address, message.toBuffer());
   };
   //---------- command ----------
