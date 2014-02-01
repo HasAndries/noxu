@@ -3,8 +3,9 @@
 var NRF24 = require("nrf"),
   spiDev = "/dev/spidev0.0",
   cePin = 24, irqPin = 25,            //var ce = require("./gpio").connect(cePin)
-  pipes = [0xF0F0F0F0E1, 0xF0F0F0F0D2],
-  role = 'ping';
+  //pipes = [0xF0F0F0F0E1, 0xF0F0F0F0D2],
+  pipes = [0xF0F0F0F0F0, 0xF0F0F0F0D2],
+  role = 'pong';
 
 var stream = require('stream'),
   util = require('util');

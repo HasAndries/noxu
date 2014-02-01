@@ -3,84 +3,77 @@ var extend = require('node.extend');
 var express = require('express');
 var path = require('path');
 var url = require('url');
-var EventEmitter = require('events').EventEmitter
+var util = require('util');
+var EventEmitter = require('events').EventEmitter;
 
-module.exports = function (options) {
-  var rfClient = new EventEmitter();
-  rfClient.app = null;
-  rfClient.server = null;
-  //========== EXPRESS APP ==========
+function RfClient(){
+  EventEmitter.call(this);
+  var _this = this;
+  this.app = null;
+  this.server = null;
+  this.config = null;
+  this.defaultConfig = {
+    channel: 0x4c,
+    dataRate: '1Mbps',
+    crcBytes: 2,
+    retryCount: 1,
+    retryDelay: 250,
+    spiDev: '/dev/spidev0.0',
+    pinCe: 24,
+    pinIrq: 25,
+    broadcastAddress: 0xF0F0F0F0F0,
+    commandAddress: 0xF0F0F0F0F1
+  };
+
+  //Express App
   var app = express();
   var env = app.get('env');
   app.set('port', process.env.PORT || 9200);
   if (env == 'development') {
     app.use(express.errorHandler());
   }
-  app.use(express.logger('dev'));
+  app.use(express.logger());
   app.use(express.bodyParser());
-  app.use(app.router);
-  //---------- home ----------
   app.get('/', function (req, res) {
     res.end('nrf client');
   });
-  //---------- receive ----------
   app.post('/receive', function (req, res) {
-    rfClient.emit('receive', req.body);
+    _this.emit('receive', req.body);
     res.end();
   });
-  rfClient.app = app;
-  //========== PRIVATE ==========
-  //---------- configure ----------
-  function configure(options, server) {
-    var config = extend({
-      channel: 0x4c,
-      dataRate: '1Mbps',
-      crcBytes: 2,
-      retryCount: 15,
-      retryDelay: 500,
-      spiDev: '/dev/spidev0.0',
-      pinCe: 24,
-      pinIrq: 25,
-      broadcastAddress: 0xF0F0F0F0F0,
-      commandAddress: 0xF0F0F0F0F1
-    }, options);
-    if (!options.serverUrl) throw new Error('Need a serverUrl');
-    //serverUrl
-    server = url.parse(options.serverUrl);
-    server.method = 'POST';
-    server.headers = {
-      'Content-Type': 'application/json',
-      'Content-Length': 0
-    };
-    //send config to server
-    var data = JSON.stringify(extend({clientUrl: 'http://10.0.0.38:9200/'}, config));
-    var request = extend({}, server);
-    request.headers['Content-Length'] = data.length;
-    request.path = '/configure/';
-    var req = http.request(request);
-    req.end(data);
-    rfClient.server = server;
-  }
-  //---------- receive ----------
-  function receive(data) {
-    rfClient.emit('receive', data);
-  }
+  this.app = app;
+}
+util.inherits(RfClient, EventEmitter);
+RfClient.prototype.configure = function(options){
+  var _this = this;
+  var config = extend({}, _this.defaultConfig, options);
+  if (!options.serverUrl) throw new Error('Need a serverUrl');
+  //serverUrl
+  var server = url.parse(options.serverUrl);
+  server.method = 'POST';
+  server.headers = {
+    'Content-Type': 'application/json',
+    'Content-Length': 0
+  };
+  //send config to server
+  var data = JSON.stringify(extend({clientUrl: 'http://10.0.0.38:9200/'}, config));
+  var request = extend({}, server);
+  request.headers['Content-Length'] = data.length;
+  request.path = '/configure/';
+  var req = http.request(request);
+  req.end(data);
 
-  //========== PUBLIC ==========
-  //---------- send ----------
-  rfClient.send = function(address, data) {
-    var request = extend({}, rfClient.server);
-    var json = JSON.stringify({address: address, data: data});
-    console.log(['SEND>>', json].join(''));
-    request.headers['Content-Length'] = json.length;
-    request.path = '/send/';
-    var req = http.request(request);
-    req.end(json);
-  };
-  //---------- configure ----------
-  rfClient.configure = function(config) {
-    configure(config);
-  };
-  return rfClient;
+  _this.server = server;
 };
+RfClient.prototype.send = function(address, data){
+  var request = extend({}, this.server);
+  var json = JSON.stringify({address: address, data: data});
+  console.log(['SEND>>', json].join(''));
+  request.headers['Content-Length'] = json.length;
+  request.path = '/send/';
+  var req = http.request(request);
+  req.end(json);
+};
+
+module.exports = RfClient;
 

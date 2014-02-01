@@ -2,6 +2,7 @@ var express = require('express');
 var swig = require('swig');
 var path = require('path');
 
+var Api = require('./routes/api');
 var app = express();
 
 module.exports = {
@@ -32,7 +33,7 @@ module.exports = {
     app.get('/', require('./routes/home').index);
     app.get('/test', require('./routes/test').index);
     app.get('/settings', require('./routes/settings').index);
-    require('./routes/api')(app);
+    var api = new Api(app);
     //special routes
     var layout = require('./routes/layout');
     app.get('/main.css', layout.css);

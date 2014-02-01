@@ -10,51 +10,55 @@ function setBit(b, n, on) {
     return isBitSet(b, n) ? b ^= mask[n] : b;
 }
 
-function CommandMessage(bufferSize) {
+function CommandMessage(options) {
   var _this = this;
-  _this.bufferSize = bufferSize;
+  _this.bufferSize = options.bufferSize || 32;
   _this.control = 0;
   _this.fromCommander = 0;
   _this.instruction = null;
   _this.data = [];
   _this.hops = [];
 
-  this.validate = function () {
-    return _this.data.length + _this.hops.length + 4 < _this.bufferSize && _this.data.length + _this.hops.length > 0;
-  };
-  this.toBuffer = function () {
-    var buffer = new Buffer(_this.bufferSize);
-    buffer[0] = 0;
-    setBit(_this.control, 0, _this.fromCommander);
-    buffer[1] = _this.instruction;
-    buffer[2] = _this.data.length;
-    buffer[3] = _this.hops.length;
-    _this.data.copy(buffer, 4, 0);
-    _this.hops.copy(buffer, 4 + _this.data.length, 0);
-    return buffer;
-  };
-}
-module.exports = function (options) {
-  var message = new CommandMessage(options.bufferSize);
-  if (options.buffer && typeof options.buffer == 'Buffer') {
-    message.control = options.readUInt8(0);
-    message.fromCommander = isBitSet(message.control, 0);
-    message.instruction = options.readUInt8(1);
+  if (options.buffer && options.buffer instanceof Buffer) {
+    this.control = options.readUInt8(0);
+    this.fromCommander = isBitSet(message.control, 0);
+    this.instruction = options.readUInt8(1);
     var dataLength = options.readUInt8(2);
     var dataStart = 4;
     var hopCount = options.readUInt8(3);
     var hopStart = dataStart + dataLength;
 
-    if (message.validate()) {
-      message.data = new Buffer(dataLength);
-      options.copy(message.data, 0, dataStart, dataStart + dataLength);
-      message.hops = new Buffer(hopCount);
-      options.copy(message.hops, 0, hopStart, hopStart + hopCount);
+    if (this.validate()) {
+      this.data = new Buffer(dataLength);
+      options.copy(this.data, 0, dataStart, dataStart + dataLength);
+      this.hops = new Buffer(hopCount);
+      options.copy(this.hops, 0, hopStart, hopStart + hopCount);
     }
   }
   else {
-    message.instruction = options.instruction;
-    message.data = options.data;
+    this.fromCommander = options.fromCommander;
+    this.instruction = options.instruction;
+    if (options.data instanceof Buffer) this.data = options.data;
+    else if (options.data instanceof Array || options.data instanceof String) this.data = new Buffer(options.data);
+    else this.data = new Buffer(options.data.toString());
   }
-  return message;
+}
+CommandMessage.prototype.validate = function(){
+  return this.data.length + this.hops.length + 4 < this.bufferSize && this.data.length + this.hops.length > 0;
 };
+CommandMessage.prototype.toBuffer = function(){
+  var length = Math.min(this.bufferSize, 4 + this.data.length + this.hops.length);
+  var buffer = new Buffer(length);
+  this.control = setBit(this.control, 0, this.fromCommander);
+  buffer[0] = this.control;
+  buffer[1] = this.instruction;
+  buffer[2] = this.data.length;
+  buffer[3] = this.hops.length;
+
+  this.data.copy(buffer, 4, 0);
+  console.log(JSON.stringify(buffer));
+  if (this.hops && this.hops.length) this.hops.copy(buffer, 4 + this.data.length, 0);
+  return buffer;
+};
+
+module.exports = CommandMessage;
