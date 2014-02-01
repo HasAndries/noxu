@@ -3,11 +3,11 @@ var express = require('express');
 var extend = require('node.extend');
 var path = require('path');
 var url = require('url');
-var nrf = require('nrf');
+var NRF24 = require('nrf');
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 
-function RfServer(){
+function RfServer() {
   EventEmitter.call(this);
   var _this = this;
   _this.app = null;
@@ -26,7 +26,7 @@ function RfServer(){
     pinCe: 24,
     pinIrq: 25,
     broadcastAddress: 0xF0F0F0F0F0,
-    commandAddress: 0xF0F0F0F0F1
+    commandAddress: 0xF1
   };
 
   //Express App
@@ -45,12 +45,12 @@ function RfServer(){
     try {
       console.log(['CONFIGURE>>', JSON.stringify(req.body)].join(''));
       _this.configure(req.body);
-      _this.radio.printDetails();
     }
     catch (err) {
       res.write(JSON.stringify(err));
     }
     _this.radio.on('ready', function () {
+      _this.radio.printDetails();
       res.end();
     });
   });
@@ -61,75 +61,88 @@ function RfServer(){
   _this.app = app;
 }
 util.inherits(RfServer, EventEmitter);
-RfServer.prototype.configure = function(options){
+RfServer.prototype.configure = function (options) {
   var _this = this;
   var config = extend({}, _this.defaultConfig, options);
+  _this.config = config;
   //stop radio
   if (_this.inbound && _this.inbound.broadcast) {
-    _this.inbound.broadcast.end();
-    _this.inbound.command.end();
+    _this.inbound.broadcast.close();
+    _this.inbound.command.close();
   }
   var inbound = {};
+  _this.inbound = inbound;
   //clientUrl
   if (!options.clientUrl) throw new error('Need a clientUrl');
   var client = url.parse(options.clientUrl);
+  _this.client = client;
   client.method = 'POST';
   client.headers = { 'Content-Type': 'application/json', 'Content-Length': 0 };
   //setup radio
-  var radio = nrf.connect(config.spiDev, config.pinCe, config.pinIrq);
+  var radio = NRF24.connect(config.spiDev, config.pinCe, config.pinIrq);
+  _this.radio = radio;
+  //radio.end();
   radio.channel(config.channel).transmitPower('PA_MAX').dataRate(config.dataRate).crcBytes(config.crcBytes).autoRetransmit({count: config.retryCount, delay: config.retryDelay});
+  //radio._debug = true;
   //setup radio pipes
   radio.begin(function () {
     inbound.broadcast = radio.openPipe('rx', config.broadcastAddress);
-    inbound.broadcast.on('data', function (data) {
+    inbound.broadcast.on('data', function (buffer) {
       console.log('BROADCAST INBOUND');
-      console.log(['BROADCAST>>', JSON.stringify(data)].join(''));
-      _this.receive(config.broadcastAddress, data);
+      console.log(['BROADCAST>>', JSON.stringify(buffer)].join(''));
+      _this.receive(config.broadcastAddress, buffer);
     });
     inbound.broadcast.on('error', function (err) {
       console.log(['BROADCAST ERROR>>', err].join(''));
     });
-    inbound.command = radio.openPipe('rx', config.commandAddress);
-    inbound.command.on('data', function (data) {
-      console.log('COMMAND INBOUND');
-      console.log(['COMMAND>>', JSON.stringify(data)].join(''));
-      _this.receive(config.commandAddress, data);
-    });
-    inbound.command.on('error', function (err) {
-      console.log(['COMMAND ERROR>>', err].join(''));
-    });
+
+//    inbound.command = radio.openPipe('rx', config.commandAddress);
+//    inbound.command.on('data', function (bytes) {
+//      console.log('COMMAND INBOUND');
+//      console.log(['COMMAND>>', JSON.stringify(bytes)].join(''));
+//      _this.receive(config.commandAddress, bytes);
+//    });
+//    inbound.command.on('error', function (err) {
+//      console.log(['COMMAND ERROR>>', err].join(''));
+//    });
   });
-  _this.config = config;
-  _this.inbound = inbound;
-  _this.client = client;
-  _this.radio = radio;
 };
-RfServer.prototype.receive = function(address, data){
+RfServer.prototype.receive = function (address, data) {
   var _this = this;
+  //reverse the data
+  var buffer = new Buffer(_this.config.bufferSize);
+  buffer.fill(0);
+  //reverse the data
+  for (var ct = 0; ct < data.length; ct++) {
+    buffer[ct] = data[_this.config.bufferSize-1-ct];
+  }
+  var json = JSON.stringify({address: address, data: buffer});
+
   var request = extend({}, _this.client);
-  request.headers['Content-Length'] = data.length;
+  request.headers['Content-Length'] = json.length;
   request.path = '/receive/';
   var req = http.request(request);
-  req.end({address: address, data: data});
+  console.log(['RECEIVE>>', json]);
+  req.end(json);
 };
-RfServer.prototype.send = function(options){
+RfServer.prototype.send = function (options) {
   var _this = this;
   console.log(['SEND>>', JSON.stringify(options)].join(''));
   var buffer = new Buffer(_this.config.bufferSize);
   buffer.fill(0);
   //reverse the data
-  for(var ct=0;ct<options.data.length;ct++){
-    buffer[31-ct] = options.data[ct];
+  for (var ct = 0; ct < options.data.length; ct++) {
+    buffer[_this.config.bufferSize-1 - ct] = options.data[ct];
   }
   console.log(['SEND BUFFER>>', JSON.stringify(buffer)].join(''));
   var output = _this.radio.openPipe('tx', options.address);
   output.on('ready', function () {
     output.write(buffer);
-    output.end();
+    output.close();
   });
   output.on('error', function (err) {
     console.log(['SEND ERROR>>', err].join(''));
-    output.end();
+    output.close();
   });
 };
 

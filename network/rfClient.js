@@ -22,7 +22,7 @@ function RfClient(){
     pinCe: 24,
     pinIrq: 25,
     broadcastAddress: 0xF0F0F0F0F0,
-    commandAddress: 0xF0F0F0F0F1
+    commandAddress: 0xF1
   };
 
   //Express App
