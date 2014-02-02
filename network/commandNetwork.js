@@ -10,9 +10,9 @@ function CommandNetwork(){
   var _this = this;
   this.bufferSize = 32;
   this.pipes = {
-    base: { address: 0xF0 },
+    base: { address: 0x00 },
     broadcast: { id: 0, address: 0xF0F0F0F0F0 },
-    command: { id: 1, address: 0xF1 }
+    command: { id: 1, address: 0x01 }
   };
   this.client = new RfClient();
   this.client.on('receive', function(json){

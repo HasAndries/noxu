@@ -30,7 +30,7 @@ function CommandMessage(options) {
     var hopStart = dataStart + dataLength;
 
     if (dataLength + hopCount + 4 > this.bufferSize) throw new Error('CommandMessage cannot have more content than BufferSize');
-    
+
     this.data = new Buffer(dataLength);
     buffer.copy(this.data, 0, dataStart, dataStart + dataLength);
     this.hops = new Buffer(hopCount);

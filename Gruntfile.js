@@ -5,7 +5,7 @@ module.exports = function (grunt) {
       target: {
         files: [
           {expand: true, src: ['app.js', 'network.js', 'config.js', 'config.json', 'package.json',
-            'admin/**', 'network/**', 'run-*'], dest: 'build/'}
+            'admin/**', 'network/**', 'run-*', 'debug-*'], dest: 'build/'}
         ]
       }
     },
