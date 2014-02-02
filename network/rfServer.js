@@ -61,6 +61,7 @@ function RfServer() {
   _this.app = app;
 }
 util.inherits(RfServer, EventEmitter);
+
 RfServer.prototype.configure = function (options) {
   var _this = this;
   var config = extend({}, _this.defaultConfig, options);
@@ -81,15 +82,13 @@ RfServer.prototype.configure = function (options) {
   //setup radio
   var radio = NRF24.connect(config.spiDev, config.pinCe, config.pinIrq);
   _this.radio = radio;
-  //radio.end();
+  radio.end();
   radio.channel(config.channel).transmitPower('PA_MAX').dataRate(config.dataRate).crcBytes(config.crcBytes).autoRetransmit({count: config.retryCount, delay: config.retryDelay});
   //radio._debug = true;
   //setup radio pipes
   radio.begin(function () {
     inbound.broadcast = radio.openPipe('rx', config.broadcastAddress);
     inbound.broadcast.on('data', function (buffer) {
-      console.log('BROADCAST INBOUND');
-      console.log(['BROADCAST>>', JSON.stringify(buffer)].join(''));
       _this.receive(config.broadcastAddress, buffer);
     });
     inbound.broadcast.on('error', function (err) {
@@ -98,8 +97,6 @@ RfServer.prototype.configure = function (options) {
 
 //    inbound.command = radio.openPipe('rx', config.commandAddress);
 //    inbound.command.on('data', function (bytes) {
-//      console.log('COMMAND INBOUND');
-//      console.log(['COMMAND>>', JSON.stringify(bytes)].join(''));
 //      _this.receive(config.commandAddress, bytes);
 //    });
 //    inbound.command.on('error', function (err) {
@@ -122,7 +119,7 @@ RfServer.prototype.receive = function (address, data) {
   request.headers['Content-Length'] = json.length;
   request.path = '/receive/';
   var req = http.request(request);
-  console.log(['RECEIVE>>', json]);
+  console.log(['RECEIVE>>', json].join(''));
   req.end(json);
 };
 RfServer.prototype.send = function (options) {
@@ -143,6 +140,12 @@ RfServer.prototype.send = function (options) {
   output.on('error', function (err) {
     console.log(['SEND ERROR>>', err].join(''));
     output.close();
+  });
+};
+RfServer.prototype.start = function(http){
+  var _this = this;
+  http.createServer(_this.app).listen(_this.app.get('port'), function () {
+    console.log('Network Client listening on port ' + _this.app.get('port'));
   });
 };
 

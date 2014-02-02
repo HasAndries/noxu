@@ -1,9 +1,10 @@
 var CommandNetwork = require('../../network/commandNetwork');
 var config = require('../../config')();
 
+var network = new CommandNetwork();
+
 function Api(app){
   var _this = this;
-  var network = new CommandNetwork();
   app.get('/api', function(req, res){
     res.end('api');
   });
@@ -11,6 +12,7 @@ function Api(app){
     res.end();
   });
   app.post('/api/configure', function(req, res){
+    network = new CommandNetwork();
     network.configure(req.body);
     res.end();
   });

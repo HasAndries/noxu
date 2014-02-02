@@ -19,28 +19,29 @@ function CommandMessage(options) {
   _this.data = [];
   _this.hops = [];
 
-  if (options.buffer && options.buffer instanceof Buffer) {
-    this.control = options.readUInt8(0);
-    this.fromCommander = isBitSet(message.control, 0);
-    this.instruction = options.readUInt8(1);
-    var dataLength = options.readUInt8(2);
+  if (options.data && options.data instanceof Array) {
+    var buffer = new Buffer(options.data);
+    this.control = buffer.readUInt8(0);
+    this.fromCommander = isBitSet(this.control, 0);
+    this.instruction = buffer.readUInt8(1);
+    var dataLength = buffer.readUInt8(2);
     var dataStart = 4;
-    var hopCount = options.readUInt8(3);
+    var hopCount = buffer.readUInt8(3);
     var hopStart = dataStart + dataLength;
 
-    if (this.validate()) {
-      this.data = new Buffer(dataLength);
-      options.copy(this.data, 0, dataStart, dataStart + dataLength);
-      this.hops = new Buffer(hopCount);
-      options.copy(this.hops, 0, hopStart, hopStart + hopCount);
-    }
+    if (dataLength + hopCount + 4 > this.bufferSize) throw new Error('CommandMessage cannot have more content than BufferSize');
+    
+    this.data = new Buffer(dataLength);
+    buffer.copy(this.data, 0, dataStart, dataStart + dataLength);
+    this.hops = new Buffer(hopCount);
+    buffer.copy(this.hops, 0, hopStart, hopStart + hopCount);
   }
   else {
     this.fromCommander = options.fromCommander;
     this.instruction = options.instruction;
     if (options.data instanceof Buffer) this.data = options.data;
     else if (options.data instanceof Array || options.data instanceof String) this.data = new Buffer(options.data);
-    else this.data = new Buffer(options.data.toString());
+    else if (options.data != null) this.data = new Buffer(options.data.toString());
   }
 }
 CommandMessage.prototype.validate = function(){

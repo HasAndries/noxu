@@ -44,6 +44,7 @@ function RfClient(){
   this.app = app;
 }
 util.inherits(RfClient, EventEmitter);
+
 RfClient.prototype.configure = function(options){
   var _this = this;
   var config = extend({}, _this.defaultConfig, options);
@@ -76,4 +77,3 @@ RfClient.prototype.send = function(address, data){
 };
 
 module.exports = RfClient;
-
