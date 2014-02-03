@@ -26,7 +26,7 @@ function RfServer() {
     pinCe: 24,
     pinIrq: 25,
     broadcastAddress: 0xF0F0F0F0F0,
-    commandAddress: 0x01
+    commandAddress: 0xC1
   };
 
   //Express App
@@ -94,14 +94,15 @@ RfServer.prototype.configure = function (options) {
     inbound.broadcast.on('error', function (err) {
       console.log(['BROADCAST ERROR>>', err].join(''));
     });
-//    var commandAddress = new Buffer(('0'+config.commandAddress.toString(16)).substr(-2), 'hex');
-//    inbound.command = radio.openPipe('rx', commandAddress);
-//    inbound.command.on('data', function (bytes) {
-//      _this.receive(config.commandAddress, bytes);
-//    });
-//    inbound.command.on('error', function (err) {
-//      console.log(['COMMAND ERROR>>', err].join(''));
-//    });
+    //var commandAddress = new Buffer(('0'+config.commandAddress.toString(16)).substr(-2), 'hex');
+    //inbound.command = radio.openPipe('rx', commandAddress);
+    inbound.command = radio.openPipe('rx', config.commandAddress+0xF0F0F0F000);
+    inbound.command.on('data', function (bytes) {
+      _this.receive(config.commandAddress, bytes);
+    });
+    inbound.command.on('error', function (err) {
+      console.log(['COMMAND ERROR>>', err].join(''));
+    });
   });
 };
 RfServer.prototype.receive = function (address, data) {

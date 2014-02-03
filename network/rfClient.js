@@ -21,8 +21,10 @@ function RfClient(){
     spiDev: '/dev/spidev0.0',
     pinCe: 24,
     pinIrq: 25,
-    broadcastAddress: 0xF0F0F0F0F0,
-    commandAddress: 0x01
+//    broadcastAddress: 0xF0F0F0F0F0,
+//    commandAddress: 0xC1
+    broadcastAddress: 0xF0,
+    commandAddress: 0xC1
   };
 
   //Express App
@@ -51,6 +53,7 @@ RfClient.prototype.configure = function(options){
   if (!options.serverUrl) throw new Error('Need a serverUrl');
   //serverUrl
   var server = url.parse(options.serverUrl);
+  this.server = server;
   server.method = 'POST';
   server.headers = {
     'Content-Type': 'application/json',
@@ -63,8 +66,6 @@ RfClient.prototype.configure = function(options){
   request.path = '/configure/';
   var req = http.request(request);
   req.end(data);
-
-  _this.server = server;
 };
 RfClient.prototype.send = function(address, data){
   var request = extend({}, this.server);

@@ -30,12 +30,11 @@ function Admin(config){
     varControls: ['{[', ']}'],
     tagControls: ['{=', '=}']
   });
-  //routes
-  _this.pages = new Pages(app);
-  _this.api = new Api(app);
-
   //network
   _this.network = new CommandNetwork();
+  //routes
+  _this.pages = new Pages(app);
+  _this.api = new Api(app, _this.network);
 }
 Admin.prototype.start = function(http){
   var _this = this;
