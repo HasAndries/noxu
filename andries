@@ -1,2 +1,2 @@
-grunt build
+grunt build-network
 scp -r build/** pi@10.0.0.236:/home/pi/noxu_commander

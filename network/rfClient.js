@@ -14,17 +14,16 @@ function RfClient(){
   this.config = null;
   this.defaultConfig = {
     channel: 0x4c,
-    dataRate: '1Mbps',
+    dataRate: 1000,
+    txPower: 0,
     crcBytes: 2,
     retryCount: 1,
     retryDelay: 250,
     spiDev: '/dev/spidev0.0',
     pinCe: 24,
     pinIrq: 25,
-//    broadcastAddress: 0xF0F0F0F0F0,
-//    commandAddress: 0xC1
-    broadcastAddress: 0xF0,
-    commandAddress: 0xC1
+    broadcastAddress: 0xF0F0F0F0F0,
+    commandAddress: 0xF1
   };
 
   //Express App
