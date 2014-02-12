@@ -37,7 +37,7 @@ CommandNetwork.prototype.send = function(nodeId, instruction, data){
   this.sendMessage(nodeId, message);
 };
 CommandNetwork.prototype.sendMessage = function(nodeId, message){
-  console.log(JSON.stringify(message));
+  console.log('send message to node(' + nodeId + ') ' + JSON.stringify(message));
   this.client.send(this.pipes.broadcast.address, message.toBuffer());
 };
 CommandNetwork.prototype.start = function(http){
@@ -58,7 +58,7 @@ CommandNetwork.prototype._processInbound = function(address, message){
     message.data = data;
     //allocate new node id
     message.data[2] = this._nextNodeId(tempId);
-    this.sendMessage(message);
+    this.sendMessage(message.data[2], message);
   }
 }
 module.exports = CommandNetwork;
