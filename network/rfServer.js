@@ -25,8 +25,7 @@ function RfServer() {
     spiDev: '/dev/spidev0.0',
     pinCe: 24,
     pinIrq: 25,
-    broadcastAddress: 0xF0F0F0F0F0,
-    commandAddress: 0xC1
+    broadcastAddress: 0xF0F0F0F0F0
   };
 
   //Express App
@@ -69,7 +68,6 @@ RfServer.prototype.configure = function (options) {
   //stop radio
   if (_this.inbound && _this.inbound.broadcast) {
     _this.inbound.broadcast.close();
-    _this.inbound.command.close();
   }
   var inbound = {};
   _this.inbound = inbound;
@@ -87,21 +85,14 @@ RfServer.prototype.configure = function (options) {
   //radio._debug = true;
   //setup radio pipes
   radio.begin(function () {
+    console.log('Opening pipe '+config.broadcastAddress.toString(16));
     inbound.broadcast = radio.openPipe('rx', config.broadcastAddress);
     inbound.broadcast.on('data', function (buffer) {
+      console.log('data');
       _this.receive(config.broadcastAddress, buffer);
     });
     inbound.broadcast.on('error', function (err) {
       console.log(['BROADCAST ERROR>>', err].join(''));
-    });
-    //var commandAddress = new Buffer(('0'+config.commandAddress.toString(16)).substr(-2), 'hex');
-    //inbound.command = radio.openPipe('rx', commandAddress);
-    inbound.command = radio.openPipe('rx', config.commandAddress+0xF0F0F0F000);
-    inbound.command.on('data', function (bytes) {
-      _this.receive(config.commandAddress, bytes);
-    });
-    inbound.command.on('error', function (err) {
-      console.log(['COMMAND ERROR>>', err].join(''));
     });
   });
 };

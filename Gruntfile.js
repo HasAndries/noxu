@@ -2,28 +2,39 @@ module.exports = function (grunt) {
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
     copy: {
-      target: {
+      admin: {
         files: [
-          {expand: true, src: ['app.js', 'network.js', 'config.js', 'config.json', 'package.json',
-            'admin/**', 'network/**', 'run-*', 'debug-*'], dest: 'build/'}
+          {expand: true, src: ['app.js', 'config.js', 'config.json', 'package.json',
+            'admin/**', 'run-admin', 'debug-admin'], dest: 'build/'}
+        ]
+      },
+      network: {
+        files: [
+          {expand: true, src: ['network.js', 'config.js', 'config.json', 'package.json',
+            'network/**', 'run-network', 'debug-network'], dest: 'build/'}
         ]
       }
     },
+    clean:{
+      build: ['build/']
+    },
     shell: {
-      install: {
+      spi: {
         options: { stdout: true },
-        command: 'npm install nrf'
+        command: 'npm install spi rpi-gpio'
       }
     }
   });
 
   grunt.loadNpmTasks('grunt-contrib-copy');
   grunt.loadNpmTasks('grunt-shell');
+  grunt.loadNpmTasks('grunt-contrib-clean');
 
-  grunt.registerTask('install', ['shell:install']);
+  grunt.registerTask('spi', ['shell:spi']);
 
-  grunt.registerTask('build', ['copy']);
-  grunt.registerTask('andries', ['build', 'scp:andries']);
+  grunt.registerTask('build', ['clean:build','copy:admin', 'copy:network']);
+  grunt.registerTask('build-admin', ['clean:build','copy:admin']);
+  grunt.registerTask('build-network', ['clean:build', 'copy:network']);
 
   grunt.registerTask('default', ['build']);
 };

@@ -10,9 +10,9 @@ function CommandNetwork(){
   this.bufferSize = 32;
   this.pipes = {
     base: { address: 0xF0F0F0F000 },
-    broadcast: { id: 0xF0, address: 0xF0 },
-    command: { id: 0xC1, address: 0xC1 }
+    broadcast: { id: 0xF0, address: 0xF0F0F0F0F0 }
   };
+  this.nodes = [];
   this.client = new RfClient();
   this.client.on('receive', function(json){
     console.log(['NETWORK IN>>', JSON.stringify(json)].join(''));
@@ -24,24 +24,21 @@ function CommandNetwork(){
 util.inherits(CommandNetwork, EventEmitter);
 
 CommandNetwork.instructions = {
-  REQ_COMMAND: 0, RES_COMMAND: 100,//broadcast
-  REQ_NETWORKID: 1, RES_NETWORKID: 101//broadcast, comma
+  REQ_NETWORKID: 1, RES_NETWORKID: 101
 };
 CommandNetwork.prototype.configure = function(config){
   this.client.configure(config);
 };
-CommandNetwork.prototype.broadcast = function(instruction, data){
-  var message = new CommandMessage({fromCommander:true, instruction: instruction, data: data, bufferSize: this.bufferSize});
-  this.broadcastMessage(message);
+CommandNetwork.prototype._nextNodeId = function(tempId){
+
 };
-CommandNetwork.prototype.broadcastMessage = function(message){
+CommandNetwork.prototype.send = function(nodeId, instruction, data){
+  var message = new CommandMessage({fromCommander:true, instruction: instruction, data: data, bufferSize: this.bufferSize});
+  this.sendMessage(nodeId, message);
+};
+CommandNetwork.prototype.sendMessage = function(nodeId, message){
   console.log(JSON.stringify(message));
   this.client.send(this.pipes.broadcast.address, message.toBuffer());
-};
-CommandNetwork.prototype.command = function(destinationId, instruction, data){
-  var address = this.pipes.base+destinationId;
-  var message = new CommandMessage({fromCommander:true, instruction: instruction, data: data, bufferSize: this.bufferSize});
-  this.client.send(address, message.toBuffer());
 };
 CommandNetwork.prototype.start = function(http){
   var _this = this;
@@ -50,15 +47,18 @@ CommandNetwork.prototype.start = function(http){
   });
 };
 CommandNetwork.prototype._processInbound = function(address, message){
-  if(message.instruction == CommandNetwork.instructions.REQ_COMMAND){
+  if(message.instruction == CommandNetwork.instructions.REQ_NETWORKID){
     var tempId = message.data.readUInt16LE(0);
+    //reply
     message.fromCommander = true;
-    message.instruction = CommandNetwork.instructions.RES_COMMAND;
+    message.instruction = CommandNetwork.instructions.RES_NETWORKID;
+    //resize buffer
     var data = new Buffer(3);
     message.data.copy(data, 0, 0);
-    data[2] = this.pipes.command.id;
     message.data = data;
-    this.broadcastMessage(message);
+    //allocate new node id
+    message.data[2] = this._nextNodeId(tempId);
+    this.sendMessage(message);
   }
 }
 module.exports = CommandNetwork;

@@ -14,12 +14,8 @@ function Api(app, network){
     res.end();
   });
   app.post('/api/broadcast', function(req, res){
-    _this.network.broadcast(req.body.instruction, req.body.data);
+    _this.network.send(null, req.body.instruction, req.body.data);
     res.end()
-  });
-  app.post('/api/command', function(req, res){
-    _this.network.command(req.body.address, req.body.instruction, req.body.data);
-    res.end();
   });
 }
 //========== config ==========

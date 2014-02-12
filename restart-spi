@@ -1,0 +1,2 @@
+sudo modprobe -r spi_bcm2708
+sudo modprobe spi_bcm2708

@@ -21,10 +21,8 @@ function RfClient(){
     spiDev: '/dev/spidev0.0',
     pinCe: 24,
     pinIrq: 25,
-//    broadcastAddress: 0xF0F0F0F0F0,
-//    commandAddress: 0xC1
-    broadcastAddress: 0xF0,
-    commandAddress: 0xC1
+    broadcastAddress: 0xF0F0F0F0F0,
+    clientUrl: 'http://10.0.0.38:9200/'
   };
 
   //Express App
@@ -60,7 +58,7 @@ RfClient.prototype.configure = function(options){
     'Content-Length': 0
   };
   //send config to server
-  var data = JSON.stringify(extend({clientUrl: 'http://10.0.0.38:9200/'}, config));
+  var data = JSON.stringify(config);
   var request = extend({}, server);
   request.headers['Content-Length'] = data.length;
   request.path = '/configure/';
