@@ -29,8 +29,10 @@ CommandNetwork.instructions = {
 CommandNetwork.prototype.configure = function(config){
   this.client.configure(config);
 };
-CommandNetwork.prototype._nextNodeId = function(tempId){
-
+CommandNetwork.prototype._newNode = function(tempId){
+  var newNode = {id: 1+this.nodes.length, tempId: tempId};
+  this.nodes.push(newNode);
+  return newNode;
 };
 CommandNetwork.prototype.send = function(nodeId, instruction, data){
   var message = new CommandMessage({fromCommander:true, instruction: instruction, data: data, bufferSize: this.bufferSize});
@@ -57,7 +59,9 @@ CommandNetwork.prototype._processInbound = function(address, message){
     message.data.copy(data, 0, 0);
     message.data = data;
     //allocate new node id
-    message.data[2] = this._nextNodeId(tempId);
+    var node = this._newNode(tempId);
+    message.data.writeUInt8(node.id, 2);
+    console.log('New Node: ' + JSON.stringify(node));
     this.sendMessage(message.data[2], message);
   }
 }
