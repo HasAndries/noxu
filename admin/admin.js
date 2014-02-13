@@ -6,9 +6,9 @@ var Api = require('./routes/api');
 var Pages = require('./routes/pages');
 var CommandNetwork = require('../network/commandNetwork');
 
-function Admin(config){
+function Admin(options){
   var _this = this;
-  _this.config = config;
+  _this.config = options;
 
   var app = express();
   _this.app = app;
@@ -31,7 +31,7 @@ function Admin(config){
     tagControls: ['{=', '=}']
   });
   //network
-  _this.network = new CommandNetwork();
+  _this.network = new CommandNetwork(options);
   //routes
   _this.pages = new Pages(app);
   _this.api = new Api(app, _this.network);

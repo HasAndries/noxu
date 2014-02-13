@@ -1,4 +1,4 @@
-var config = require('../../config')();
+var config = require('../../config');
 
 function Api(app, network){
   var _this = this;
@@ -7,6 +7,7 @@ function Api(app, network){
     res.end('api');
   });
   app.get('/api/nodes', function(req, res){
+    _this.network.getNodes();
     res.end();
   });
   app.post('/api/configure', function(req, res){
@@ -15,6 +16,10 @@ function Api(app, network){
   });
   app.post('/api/broadcast', function(req, res){
     _this.network.send(null, req.body.instruction, req.body.data);
+    res.end()
+  });
+  app.post('/api/send', function(req, res){
+    _this.network.send(req.body.id, req.body.instruction, req.body.data);
     res.end()
   });
 }

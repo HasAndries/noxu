@@ -1,11 +1,15 @@
 {
-    "base": {
+  "base": {
 
-    },
-    "development": {
-        "serverUrl": "http://10.0.0.236:9100/"
-    },
-    "production": {
+  },
+  "andries": {
+    "clientUrl": "http://10.0.0.38:9200/",
+    "serverUrl": "http://10.0.0.236:9100/"
+  },
+  "development": {
+    "serverUrl": "http://10.0.0.236:9100/"
+  },
+  "production": {
 
-    }
+  }
 }
