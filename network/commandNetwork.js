@@ -64,15 +64,10 @@ CommandNetwork.prototype._processInbound = function(address, message){
     //reply
     message.fromCommander = true;
     message.instruction = instructions.RES_NETWORKID;
-    //resize buffer
-    var data = new Buffer(3);
-    message.data.copy(data, 0, 0);
-    message.data = data;
     //allocate new node id
     var node = this._newNode(tempId);
-    message.data.writeUInt8(node.id, 2);
     console.log('New Node: ' + JSON.stringify(node));
-    this.sendMessage(message.data[2], message);
+    this.sendMessage(node.id, message);
   }
 };
 //========== public ==========
@@ -93,9 +88,9 @@ CommandNetwork.prototype.send = function(nodeId, instruction, data){
   this.sendMessage(nodeId, message);
 };
 CommandNetwork.prototype.sendMessage = function(nodeId, message){
-  console.log('send message to node(' + nodeId || '**ALL**' + ') ' + JSON.stringify(message));
   if (nodeId)
     message.hops.push(nodeId);
+  console.log('send message to node(' + (nodeId || '**ALL**') + ') ' + JSON.stringify(message));
   this.client.send(this.pipes.broadcast.address, message.toBuffer());
 };
 CommandNetwork.prototype.ping = function(id){
