@@ -7,7 +7,8 @@ function Api(app, network){
     res.end('api');
   });
   app.get('/api/nodes', function(req, res){
-    _this.network.getNodes();
+    var nodes = _this.network.getNodes();
+    res.write(JSON.stringify(nodes));
     res.end();
   });
   app.post('/api/configure', function(req, res){
@@ -20,7 +21,11 @@ function Api(app, network){
   });
   app.post('/api/send', function(req, res){
     _this.network.send(req.body.id, req.body.instruction, req.body.data);
-    res.end()
+    res.end();
+  });
+  app.post('/api/ping', function(req, res){
+    _this.network.ping(req.body.id);
+    res.end();
   });
 }
 //========== config ==========

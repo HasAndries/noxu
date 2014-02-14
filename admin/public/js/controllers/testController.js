@@ -3,6 +3,9 @@ function TestController($scope, $http, url) {
   $scope.configServerUrl = 'http://10.0.0.236:9100';
   $scope.broadcastInstruction = 1;
   $scope.broadcastData = '123';
+  $scope.init = function(){
+    $scope.refreshNodes();
+  };
   $scope.configure = function () {
     var fullUrl = [url.api, 'configure'].join('');
     var httpData = {
@@ -27,8 +30,24 @@ function TestController($scope, $http, url) {
 
       });
   };
-  $scope.getNodes = function () {
-    $http({method: 'GET', url: [url.api, 'nodes'].join('')}).
+  $scope.refreshNodes = function () {
+    $http({method: 'GET', url: url.api+'nodes'}).
+      success(function (data, status) {
+        $scope.nodes = [];
+        $.each(data, function(i, val){
+          $scope.nodes.push({id: val.id, tempId: val.tempId});
+        });
+      }).
+      error(function (data, status) {
+
+      });
+  };
+  $scope.selectNode = function(node){
+    $scope.activeNode = node;
+  };
+  $scope.ping = function(node){
+    var httpData = {id: node && node.id || null};
+    $http({method: 'POST', url: url.api+'ping', data: httpData}).
       success(function (data, status) {
 
       }).

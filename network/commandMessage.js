@@ -19,7 +19,7 @@ function CommandMessage(options) {
   _this.data = [];
   _this.hops = [];
 
-  if (options.data && options.data instanceof Array) {
+  if (!options.instruction && options.data && options.data instanceof Array) {
     var buffer = new Buffer(options.data);
     this.control = buffer.readUInt8(0);
     this.fromCommander = isBitSet(this.control, 0);
@@ -33,8 +33,9 @@ function CommandMessage(options) {
 
     this.data = new Buffer(dataLength);
     buffer.copy(this.data, 0, dataStart, dataStart + dataLength);
-    this.hops = new Buffer(hopCount);
+    var hops = new Buffer(hopCount);
     buffer.copy(this.hops, 0, hopStart, hopStart + hopCount);
+    this.hops = hops.toJSON();
   }
   else {
     this.fromCommander = options.fromCommander;
@@ -57,8 +58,8 @@ CommandMessage.prototype.toBuffer = function(){
   buffer[3] = this.hops.length;
 
   this.data.copy(buffer, 4, 0);
-  console.log(JSON.stringify(buffer));
-  if (this.hops && this.hops.length) this.hops.copy(buffer, 4 + this.data.length, 0);
+  for(var i=0;i<this.hops.length;i++)
+    buffer.writeUInt8(this.hops[i], 4 + this.data.length);
   return buffer;
 };
 

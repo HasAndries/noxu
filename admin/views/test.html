@@ -4,7 +4,53 @@
 {= block js =}{= endblock =}
 
 {= block content =}
-<div class="content test {{ displayMode }} hidden-xs hidden-sm" ng-controller="TestController">
+<div class="content test {{ displayMode }} hidden-xs hidden-sm" ng-controller="TestController" ng-init="init()">
+  <div class="row">
+    <div class="col-md-3">
+      <h4>Nodes on network <a href="" class="btn btn-primary refresh-nodes" ng-click="refreshNodes()">Refresh</a></h4>
+      <hr>
+      <ul class="list-group">
+        <a href="" class="list-group-item" ng-class="activeNode==null && 'active'" ng-click="selectNode(null)">All</a>
+        <a href="" class="list-group-item" ng-class="activeNode==node && 'active'" ng-repeat="node in nodes" ng-click="selectNode(node)">{{node.id}}</a>
+      </ul>
+    </div>
+    <div class="col-md-9">
+      <div ng-show="!activeNode">
+        <div class="row">
+          <div class="col-md-6">
+            <h4>Information</h4>
+            <hr>
+            <div>Active Nodes: {{nodes.length}}</div>
+          </div>
+          <div class="col-md-6">
+            <h4>Operations</h4>
+            <hr>
+            <div><a href="" class="btn btn-primary" ng-click="ping(null)">Ping All</a></div>
+            <br>
+            <div><a href="" class="btn btn-danger" ng-click="delete(null)">Delete All</a></div>
+          </div>
+        </div>
+      </div>
+      <div ng-show="activeNode">
+        <div class="row">
+          <div class="col-md-6">
+            <h4>Information</h4>
+            <hr>
+            <div>Id: {{activeNode.id}}</div>
+            <div>TempId: {{activeNode.tempId}}</div>
+          </div>
+          <div class="col-md-6">
+            <h4>Operations</h4>
+            <hr>
+            <div><a href="" class="btn btn-primary" ng-click="ping(activeNode)">Ping</a></div>
+            <br>
+            <div><a href="" class="btn btn-danger" ng-click="delete(activeNode)">Delete</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="row">
     <div class="col-md-4">
       <h3>Configure</h3>

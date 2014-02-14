@@ -1,0 +1,4 @@
+module.exports = {
+  REQ_NETWORKID: 1, RES_NETWORKID: 101,
+  REQ_PING: 2, RES_PING: 102
+};
