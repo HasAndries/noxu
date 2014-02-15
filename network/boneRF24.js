@@ -1,5 +1,6 @@
 //var b = require('bonescript');
 var gpio = require('rpi-gpio');
+//var gpio = require('pi-gpio');
 var consts = require('./consts');
 var SPI = require('spi');
 var bignum = require('bignum');
@@ -12,8 +13,10 @@ function BoneRF24(){
   // var mosiPin = 'P9_18';
   // var misoPin = 'P9_21';
   //var cePin = 'P9_16';
-  var csnPin = 8;
-  var cePin = 24;
+  //var csnPin = 8;
+  //var cePin = 24;
+  var csnPin = 24;
+  var cePin = 18;
 
   var inSendMode = false;
 
@@ -31,6 +34,7 @@ function BoneRF24(){
       cePin = y;
       //b.pinMode(cePin, b.OUTPUT);
       gpio.setup(cePin, gpio.DIR_OUT);
+      //gpio.open(cePin, 'output');
     }
   });
 
@@ -332,6 +336,8 @@ function BoneRF24(){
   //b.pinMode(csnPin, b.OUTPUT);
   gpio.setup(cePin, gpio.DIR_OUT);
   gpio.setup(csnPin, gpio.DIR_OUT);
+  //gpio.open(cePin, 'output');
+  //gpio.open(csnPin, 'output');
   _this.ceLow();
   _this.csnHigh();
 };

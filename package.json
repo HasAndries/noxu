@@ -9,8 +9,6 @@
   },
   "repository": "https://github.com/HasAndries/noxu.git",
   "dependencies": {
-    "rpi-gpio": "0.x",
-    "spi": "0.x",
     "bignum": "0.x",
     "less": "1.x",
     "express": "3.x",
