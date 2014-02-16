@@ -1,6 +1,7 @@
 //var b = require('bonescript');
-var gpio = require('rpi-gpio');
+//var gpio = require('rpi-gpio');
 //var gpio = require('pi-gpio');
+var gpio = require('./gpio');
 var consts = require('./consts');
 var SPI = require('spi');
 var bignum = require('bignum');
@@ -13,10 +14,12 @@ function BoneRF24(){
   // var mosiPin = 'P9_18';
   // var misoPin = 'P9_21';
   //var cePin = 'P9_16';
-  //var csnPin = 8;
-  //var cePin = 24;
-  var csnPin = 24;
-  var cePin = 18;
+  var csnPin = 8;
+  var cePin = 24;
+  //var csnPin = 24;
+  //var cePin = 18;
+  var csn = gpio.connect(csnPin);
+  var ce = gpio.connect(cePin);
 
   var inSendMode = false;
 
@@ -33,8 +36,10 @@ function BoneRF24(){
     set: function(y) {
       cePin = y;
       //b.pinMode(cePin, b.OUTPUT);
-      gpio.setup(cePin, gpio.DIR_OUT);
+      //gpio.setup(cePin, gpio.DIR_OUT);
       //gpio.open(cePin, 'output');
+      ce = gpio.connect(cePin);
+      ce.mode('out');
     }
   });
 
@@ -77,22 +82,26 @@ function BoneRF24(){
 
   _this.ceHigh = function() {
     //b.digitalWrite(cePin, b.HIGH);
-    gpio.write(cePin, HIGH);
+    //gpio.write(cePin, HIGH);
+    ce.value(HIGH);
   };
 
   _this.ceLow = function() {
     //b.digitalWrite(cePin, b.LOW);
-    gpio.write(cePin, LOW);
+    //gpio.write(cePin, LOW);
+    ce.value(LOW);
   };
 
   _this.csnHigh = function() {
     //b.digitalWrite(csnPin, b.HIGH);
-    gpio.write(csnPin, HIGH);
+    //gpio.write(csnPin, HIGH);
+    csn.value(HIGH);
   };
 
   _this.csnLow = function() {
     //b.digitalWrite(csnPin, b.LOW);
-    gpio.write(csnPin, LOW);
+    //gpio.write(csnPin, LOW);
+    csn.value(LOW);
   };
 
   _this.setToAddr = function(addrBuf) {
@@ -334,10 +343,15 @@ function BoneRF24(){
   //Initialization
   //b.pinMode(cePin, b.OUTPUT);
   //b.pinMode(csnPin, b.OUTPUT);
-  gpio.setup(cePin, gpio.DIR_OUT);
-  gpio.setup(csnPin, gpio.DIR_OUT);
+  //gpio.setup(cePin, gpio.DIR_OUT);
+  //gpio.setup(csnPin, gpio.DIR_OUT);
   //gpio.open(cePin, 'output');
   //gpio.open(csnPin, 'output');
+  ce = gpio.connect(cePin);
+  ce.mode('out');
+  csn = gpio.connect(csnPin);
+  csn.mode('out');
+
   _this.ceLow();
   _this.csnHigh();
 };
