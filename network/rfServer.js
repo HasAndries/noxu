@@ -2,35 +2,31 @@ var express = require('express');
 var extend = require('node.extend');
 var path = require('path');
 var url = require('url');
-//var NRF24 = require('nrf');
-var BoneRF24 = require('./boneRF24');
+var RF24 = require('../rf24');
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 var common = require('./common');
-var consts = require('./consts');
-var bignum = require('bignum');
 
 function RfServer(options) {
   EventEmitter.call(this);
   var _this = this;
-  _this.app = null;
-  _this.client = null;
-  _this.inbound = null;
-  _this.radio = null;
-  _this.defaultConfig = {
+  this.app = null;
+  this.client = null;
+  this.radio = null;
+  this.outbound = [];
+  this.ready = false;
+  this.config = {
     bufferSize: 32,
     channel: 0x4c,
-    dataRate: '1Mbps',
-    crcBytes: 2,
+    dataRate: RF24.DataRate.kb1000,
+    crcBytes: RF24.Crc.bit16,
     retryCount: 1,
     retryDelay: 250,
     spiDev: '/dev/spidev0.0',
     pinCe: 24,
-    pinCsn: 8,
-    pinIrq: 25,
     address: 0xF0F0F0F0F0
   };
-  this.config = extend({}, _this.defaultConfig, options);
+  extend(this.config, options);
 
   //Express App
   var app = express();
@@ -51,9 +47,7 @@ function RfServer(options) {
     catch (err) {
       res.write(JSON.stringify(err));
     }
-    _this.radio.once('ready', function () {
-      res.end();
-    });
+    res.end();
   });
   app.post('/send', function (req, res) {
     _this.send(req.body);
@@ -66,14 +60,10 @@ util.inherits(RfServer, EventEmitter);
 
 RfServer.prototype.configure = function (options) {
   var _this = this;
+  this.ready = false;
   var config = extend({}, _this.defaultConfig, _this.config || {}, options || {});
   _this.config = config;
   console.log(['CONFIGURE>>', JSON.stringify(config)].join(''));
-  //stop radio
-  if (_this.inbound) {
-    _this.inbound.close();
-  }
-  _this.inbound = null;
   //clientUrl
   if (!config.clientUrl) throw new Error('Need a clientUrl');
   var client = url.parse(config.clientUrl);
@@ -82,19 +72,22 @@ RfServer.prototype.configure = function (options) {
   client.headers = { 'Content-Type': 'application/json', 'Content-Length': 0 };
   //setup radio
   //var radio = NRF24.connect(config.spiDev, config.pinCe, config.pinIrq);
-  var radio = new BoneRF24();
-  _this.radio = radio;
-  radio.spiDev = config.spiDev;
-  //radio.cePin = config.pinCe;
-  //radio.csnPin = config.pinCsn;
-  radio.channel = config.channel;
-  radio.payload = 32;
-  radio.address = config.address;
-  radio.setPower(3);
+  var radio = new RF24(config.spiDev, config.pinCe);
+  this.radio = radio;
+  console.log(JSON.stringify(radio));
+  radio.begin();
+  radio.setPALevel(RF24.Power.max);
+  radio.setChannel(config.channel);
+  radio.setCRCLength(config.crcBytes);
   radio.setDataRate(config.dataRate);
-  radio.setCRC(config.crcBytes);
-  radio.setRetries(config.retryDelay, config.retryCount);
-  radio.startReceiving();
+  radio.setRetries(config.retryCount, config.retryDelay);
+  radio.setPayloadSize(config.bufferSize);
+  radio.enableDynamicPayloads();
+  radio.setAutoAck(false);
+  radio.powerUp();
+  radio.printDetails();
+  this.ready = true;
+  radio.startListening();
 };
 RfServer.prototype.receive = function (address, data) {
   var _this = this;
@@ -117,21 +110,9 @@ RfServer.prototype.send = function (options) {
   buffer.fill(0);
   //reverse the data
   for (var ct = 0; ct < options.data.length; ct++) {
-    buffer[_this.config.bufferSize-1 - ct] = options.data[ct];
+    buffer[ct] = options.data[ct];
   }
-  console.log(['SEND BUFFER>>', JSON.stringify(buffer)].join(''));
-  _this.radio.setToAddr(bignum(options.address.toString(16), 16).toBuffer());
-  _this.radio.send(buffer);
-
-  var output = _this.radio.openPipe('tx', options.address);
-  output.on('ready', function () {
-    output.write(buffer);
-    output.close();
-  });
-  output.on('error', function (err) {
-    console.log(['SEND ERROR>>', err].join(''));
-    output.close();
-  });
+  this.outbound.push(buffer);
 };
 RfServer.prototype.start = function(http, config){
   var _this = this;
@@ -142,10 +123,39 @@ RfServer.prototype.start = function(http, config){
   this.loop();
 };
 
+RfServer.prototype.processInbound = function(){
+  var avail = this.radio.available();
+  if (avail.any){
+    var data = this.radio.read();
+    var buffer = new Buffer(this.config.bufferSize);
+    buffer.fill(0);
+    data.copy(buffer);
+    var retVal = {pipeNum: avail.pipeNum, data: buffer};
+    console.log('INBOUND>>' + JSON.stringify(retVal));
+
+    common.sendRequest(this.client, '/receive/', retVal, common.emitSuccess('received'), common.emitError('receiveError'));
+  }
+};
+
+RfServer.prototype.processOutbound = function(){
+  if (!this.outbound.length) return;
+
+  this.radio.stopListening();
+  this.radio.openWritingPipe(this.config.address);
+
+  while(this.outbound.length){
+    var buffer = this.outbound.shift();
+    console.log(['OUTBOUND>>', JSON.stringify(buffer)].join(''));
+    this.radio.write(buffer);
+  }
+
+  this.radio.startListening();
+};
+
 RfServer.prototype.loop = function(){
-  if (this.radio && this.radio.dataReady()) {
-    var data = this.radio.getData();
-    this.receive(this.config.address, data);
+  if (this.ready){
+    this.processInbound();
+    this.processOutbound();
   }
   setImmediate(this.loop.bind(this));
 };

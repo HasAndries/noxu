@@ -1,6 +1,6 @@
 TestController.$inject = ['$scope', '$http', 'url'];
 function TestController($scope, $http, url) {
-  $scope.configServerUrl = 'http://10.0.0.236:9100';
+  $scope.configServerUrl = 'http://192.168.1.4:9100';
   $scope.broadcastInstruction = 1;
   $scope.broadcastData = '123';
   $scope.init = function(){
@@ -35,7 +35,7 @@ function TestController($scope, $http, url) {
       success(function (data, status) {
         $scope.nodes = [];
         $.each(data, function(i, val){
-          $scope.nodes.push({id: val.id, tempId: val.tempId});
+          $scope.nodes.push(val);
         });
       }).
       error(function (data, status) {

@@ -196,9 +196,11 @@ Handle<Value> Radio::available(const Arguments& args) {
     Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
     uv_mutex_lock(&(self->_access));
-    bool dataAvailable = self->_rf24.available();
+    uint8_t pipe;
+    bool dataAvailable = self->_rf24.available(&pipe);
     uv_mutex_unlock(&(self->_access));
-    return scope.Close(Boolean::New(dataAvailable));
+    int8_t retVal = dataAvailable ? pipe : -1;
+    return scope.Close(Number::New(retVal));
 }
 Handle<Value> Radio::read(const Arguments& args) {
     HandleScope scope;

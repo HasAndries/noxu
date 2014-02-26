@@ -13,15 +13,6 @@ function RfClient(){
   this.server = null;
   this.config = null;
   this.defaultConfig = {
-    channel: 0x4c,
-    dataRate: '1Mbps',
-    crcBytes: 2,
-    retryCount: 1,
-    retryDelay: 250,
-    spiDev: '/dev/spidev0.0',
-    pinCe: 24,
-    pinIrq: 25,
-    broadcastAddress: 0xF0F0F0F0F0,
     clientUrl: 'http://10.0.0.38:9200/'
   };
 

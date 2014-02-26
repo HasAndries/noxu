@@ -34,7 +34,7 @@ function CommandMessage(options) {
     this.data = new Buffer(dataLength);
     buffer.copy(this.data, 0, dataStart, dataStart + dataLength);
     var hops = new Buffer(hopCount);
-    buffer.copy(this.hops, 0, hopStart, hopStart + hopCount);
+    buffer.copy(hops, 0, hopStart, hopStart + hopCount);
     this.hops = hops.toJSON();
   }
   else {

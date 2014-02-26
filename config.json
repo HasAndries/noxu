@@ -3,11 +3,11 @@
 
   },
   "andries": {
-    "clientUrl": "http://10.0.0.38:9200/",
-    "serverUrl": "http://10.0.0.236:9100/"
+    "clientUrl": "http://192.168.1.2:9200/",
+    "serverUrl": "http://192.168.1.4:9100/"
   },
   "development": {
-    "serverUrl": "http://10.0.0.236:9100/"
+    "serverUrl": "http://192.168.1.4:9100/"
   },
   "production": {
 

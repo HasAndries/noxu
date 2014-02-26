@@ -11,7 +11,7 @@ module.exports = function (grunt) {
       network: {
         files: [
           {expand: true, src: ['network.js', 'config.js', 'config.json', 'package.json',
-            'network/**', 'run-network', 'debug-network'], dest: 'build/'}
+            'network/**', 'rf24/**', 'run-network', 'debug-network'], dest: 'build/'}
         ]
       }
     },

@@ -42,6 +42,18 @@ CommandNetwork.prototype._newNode = function(tempId){
   this._saveNodes();
   return newNode;
 };
+CommandNetwork.prototype._getNode = function(id){
+  for(var ct=0;ct<this.nodes.length;ct++){
+    if (this.nodes[ct].id == id) return this.nodes[ct];
+  }
+  return null;
+};
+CommandNetwork.prototype._getNodeTempId = function(tempId){
+  for(var ct=0;ct<this.nodes.length;ct++){
+    if (this.nodes[ct].tempId == tempId) return this.nodes[ct];
+  }
+  return null;
+};
 CommandNetwork.prototype._saveNodes = function(){
   var json = JSON.stringify(this.nodes);
   fs.writeFile('nodes.txt', json, function(err){
@@ -60,7 +72,8 @@ CommandNetwork.prototype._loadNodes = function(){
 };
 CommandNetwork.prototype._processInbound = function(address, message){
   if(message.instruction == instructions.REQ_NETWORKID){
-    var tempId = message.data.readUInt16LE(0);
+    var tempId = message.data.readUInt32LE(0);
+    if (this._getNodeTempId(tempId)) return;
     //reply
     message.fromCommander = true;
     message.instruction = instructions.RES_NETWORKID;
@@ -68,6 +81,13 @@ CommandNetwork.prototype._processInbound = function(address, message){
     var node = this._newNode(tempId);
     console.log('New Node: ' + JSON.stringify(node));
     this.sendMessage(node.id, message);
+  }
+  else if(message.instruction == instructions.RES_PING){
+    var node = this._getNode(message.hops[message.hops.length-1]);
+    var diff = process.hrtime(node.pingStart);
+    node.ping = diff[0] * 1e9 + diff[1];
+    delete node.pingStart;
+    console.log('Ping Response Node('+node.id+') '+node.ping+'ns');
   }
 };
 //========== public ==========
@@ -94,7 +114,16 @@ CommandNetwork.prototype.sendMessage = function(nodeId, message){
   this.client.send(this.pipes.broadcast.address, message.toBuffer());
 };
 CommandNetwork.prototype.ping = function(id){
-  this.send(id, instructions.REQ_PING, process.hrtime());
+  if (id){
+    this._getNode(id).pingStart = process.hrtime();
+    this.send(id, instructions.REQ_PING, []);
+  }
+  else{
+    for(var ct=0;ct<this.nodes.length;ct++){
+      this.nodes[ct].pingStart = process.hrtime();
+      this.send(this.nodes[ct].id, instructions.REQ_PING, []);
+    }
+  }
 };
 
 module.exports = CommandNetwork;
