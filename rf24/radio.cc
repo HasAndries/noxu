@@ -24,6 +24,7 @@ void Radio::Init(Handle<Object> target) {
     tpl->PrototypeTemplate()->Set(String::NewSymbol("isPVariant"), FunctionTemplate::New(isPVariant)->GetFunction());
     tpl->PrototypeTemplate()->Set(String::NewSymbol("testCarrier"), FunctionTemplate::New(testCarrier)->GetFunction());
     tpl->PrototypeTemplate()->Set(String::NewSymbol("testRPD"), FunctionTemplate::New(testRPD)->GetFunction());
+    tpl->PrototypeTemplate()->Set(String::NewSymbol("printDetails"), FunctionTemplate::New(printDetails)->GetFunction());
 
     tpl->PrototypeTemplate()->Set(String::NewSymbol("openReadingPipe"), FunctionTemplate::New(openReadingPipe)->GetFunction());
     tpl->PrototypeTemplate()->Set(String::NewSymbol("openWritingPipe"), FunctionTemplate::New(openWritingPipe)->GetFunction());
@@ -133,6 +134,16 @@ Handle<Value> Radio::testRPD(const Arguments& args) {
     bool retVal = self->_rf24.testRPD();
     uv_mutex_unlock(&(self->_access));
     return scope.Close(Boolean::New(retVal));
+}
+Handle<Value> Radio::printDetails(const Arguments& args) {
+    HandleScope scope;
+    assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
+
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.printDetails();
+    uv_mutex_unlock(&(self->_access));
+    return scope.Close(Undefined());
 }
 
 Handle<Value> Radio::openReadingPipe(const Arguments& args) {

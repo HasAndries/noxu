@@ -21,6 +21,7 @@ private:
     static v8::Handle<v8::Value> isPVariant(const v8::Arguments& args);
     static v8::Handle<v8::Value> testCarrier(const v8::Arguments& args);
     static v8::Handle<v8::Value> testRPD(const v8::Arguments& args);
+    static v8::Handle<v8::Value> printDetails(const v8::Arguments& args);
 
     static v8::Handle<v8::Value> openReadingPipe(const v8::Arguments& args);
     static v8::Handle<v8::Value> openWritingPipe(const v8::Arguments& args);
