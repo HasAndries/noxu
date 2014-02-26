@@ -77,55 +77,61 @@ Handle<Value> Radio::New(const Arguments& args) {
 Handle<Value> Radio::begin(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.begin();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.begin();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::powerUp(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.powerUp();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.powerUp();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::powerDown(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.powerDown();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.powerDown();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::isPVariant(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    bool retVal = ObjectWrap::Unwrap<Radio>(args.This())->_rf24.isPVariant();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    bool retVal = self->_rf24.isPVariant();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Boolean::New(retVal));
 }
 Handle<Value> Radio::testCarrier(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    bool retVal = ObjectWrap::Unwrap<Radio>(args.This())->_rf24.testCarrier();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    bool retVal = self->_rf24.testCarrier();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Boolean::New(retVal));
 }
 Handle<Value> Radio::testRPD(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    bool retVal = ObjectWrap::Unwrap<Radio>(args.This())->_rf24.testRPD();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    bool retVal = self->_rf24.testRPD();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Boolean::New(retVal));
 }
 
@@ -134,62 +140,66 @@ Handle<Value> Radio::openReadingPipe(const Arguments& args) {
     assert(args.Length() == 2);
     assert(args[0]->IsNumber());
     assert(args[1]->IsNumber());
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.openReadingPipe(args[0]->NumberValue(), args[1]->Uint32Value());
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.openReadingPipe(args[0]->NumberValue(), args[1]->Uint32Value());
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::openWritingPipe(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 1);
     assert(args[0]->IsNumber());
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.openWritingPipe(args[0]->Uint32Value());
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.openWritingPipe(args[0]->Uint32Value());
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 
 Handle<Value> Radio::startListening(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.startListening();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.startListening();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::stopListening(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.stopListening();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.stopListening();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::available(const Arguments& args) {
     HandleScope scope;
-
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    bool dataAvailable = ObjectWrap::Unwrap<Radio>(args.This())->_rf24.available();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    bool dataAvailable = self->_rf24.available();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Boolean::New(dataAvailable));
 }
 Handle<Value> Radio::read(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
-
-    uv_mutex_lock(&_access);
     Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
+
+    uv_mutex_lock(&(self->_access));
     uint8_t payloadSize = self->_rf24.getPayloadSize();
     //node::Buffer* buffer = node::Buffer::New(payloadSize);
     uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t) * payloadSize);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.read(buffer, payloadSize);
-    uv_mutex_unlock(&_access);
+    self->_rf24.read(buffer, payloadSize);
+    uv_mutex_unlock(&(self->_access));
 
     node::Buffer *slowBuffer = node::Buffer::New(payloadSize);
     memcpy(node::Buffer::Data(slowBuffer), buffer, payloadSize);
@@ -205,10 +215,11 @@ Handle<Value> Radio::write(const Arguments& args) {
     assert(args.Length() == 1);
     assert(node::Buffer::HasInstance(args[0]));
     Local<Object> buffer = args[0]->ToObject();
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.write(node::Buffer::Data(buffer), node::Buffer::Length(buffer));
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.write(node::Buffer::Data(buffer), node::Buffer::Length(buffer));
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 
@@ -216,19 +227,21 @@ Handle<Value> Radio::setPALevel(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 1);
     assert(args[0]->IsNumber());
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.setPALevel(static_cast<rf24_pa_dbm_e>(args[0]->NumberValue()));
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.setPALevel(static_cast<rf24_pa_dbm_e>(args[0]->NumberValue()));
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::getPALevel(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    rf24_pa_dbm_e retVal = ObjectWrap::Unwrap<Radio>(args.This())->_rf24.getPALevel();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    rf24_pa_dbm_e retVal = self->_rf24.getPALevel();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Number::New(retVal));
 }
 
@@ -236,10 +249,11 @@ Handle<Value> Radio::setChannel(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 1);
     assert(args[0]->IsNumber());
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.setChannel(args[0]->NumberValue());
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.setChannel(args[0]->NumberValue());
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 
@@ -247,28 +261,31 @@ Handle<Value> Radio::setCRCLength(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 1);
     assert(args[0]->IsNumber());
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.setCRCLength(static_cast<rf24_crclength_e>(args[0]->NumberValue()));
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.setCRCLength(static_cast<rf24_crclength_e>(args[0]->NumberValue()));
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::disableCRC(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.disableCRC();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.disableCRC();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::getCRCLength(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    rf24_crclength_e retVal = ObjectWrap::Unwrap<Radio>(args.This())->_rf24.getCRCLength();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    rf24_crclength_e retVal = self->_rf24.getCRCLength();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Number::New(retVal));
 }
 
@@ -276,19 +293,21 @@ Handle<Value> Radio::setDataRate(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 1);
     assert(args[0]->IsNumber());
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.setDataRate(static_cast<rf24_datarate_e>(args[0]->NumberValue()));
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.setDataRate(static_cast<rf24_datarate_e>(args[0]->NumberValue()));
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::getDataRate(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    rf24_datarate_e retVal = ObjectWrap::Unwrap<Radio>(args.This())->_rf24.getDataRate();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    rf24_datarate_e retVal = self->_rf24.getDataRate();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Number::New(retVal));
 }
 
@@ -297,10 +316,11 @@ Handle<Value> Radio::setRetries(const Arguments& args) {
     assert(args.Length() == 2);
     assert(args[0]->IsNumber());
     assert(args[1]->IsNumber());
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.setRetries(args[0]->NumberValue(), args[1]->NumberValue());
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.setRetries(args[0]->NumberValue(), args[1]->NumberValue());
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 
@@ -308,39 +328,43 @@ Handle<Value> Radio::setPayloadSize(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 1);
     assert(args[0]->IsNumber());
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.setPayloadSize(args[0]->NumberValue());
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.setPayloadSize(args[0]->NumberValue());
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::getPayloadSize(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 1);
     assert(args[0]->IsNumber());
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    uint8_t retVal = ObjectWrap::Unwrap<Radio>(args.This())->_rf24.getPayloadSize();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    uint8_t retVal = self->_rf24.getPayloadSize();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Number::New(retVal));
 }
 Handle<Value> Radio::enableDynamicPayloads(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.enableDynamicPayloads();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.enableDynamicPayloads();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::getDynamicPayloadSize(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 1);
     assert(args[0]->IsNumber());
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    uint8_t retVal = ObjectWrap::Unwrap<Radio>(args.This())->_rf24.getDynamicPayloadSize();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    uint8_t retVal = self->_rf24.getDynamicPayloadSize();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Number::New(retVal));
 }
 
@@ -350,22 +374,24 @@ Handle<Value> Radio::setAutoAck(const Arguments& args) {
     assert(args[0]->IsBoolean());
     if (args.Length() == 2)
         assert(args[1]->IsNumber());
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
+    uv_mutex_lock(&(self->_access));
     if (args.Length() == 2)
-        ObjectWrap::Unwrap<Radio>(args.This())->_rf24.setAutoAck(args[1]->NumberValue(), args[0]->BooleanValue());
+        self->_rf24.setAutoAck(args[1]->NumberValue(), args[0]->BooleanValue());
     else
-        ObjectWrap::Unwrap<Radio>(args.This())->_rf24.setAutoAck(args[0]->BooleanValue());
-    uv_mutex_unlock(&_access);
+        self->_rf24.setAutoAck(args[0]->BooleanValue());
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 Handle<Value> Radio::enableAckPayload(const Arguments& args) {
     HandleScope scope;
     assert(args.Length() == 0);
+    Radio* self = ObjectWrap::Unwrap<Radio>(args.This());
 
-    uv_mutex_lock(&_access);
-    ObjectWrap::Unwrap<Radio>(args.This())->_rf24.enableAckPayload();
-    uv_mutex_unlock(&_access);
+    uv_mutex_lock(&(self->_access));
+    self->_rf24.enableAckPayload();
+    uv_mutex_unlock(&(self->_access));
     return scope.Close(Undefined());
 }
 

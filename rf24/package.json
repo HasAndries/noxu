@@ -1,0 +1,8 @@
+{
+  "name": "rf24",
+  "version": "0.0.1",
+  "description": "rf24 wrapper",
+  "main": "rf24.js",
+  "private": true,
+  "gypfile": true
+}

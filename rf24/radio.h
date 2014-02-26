@@ -7,10 +7,10 @@
 class Radio : public node::ObjectWrap {
 public:
     static void Init(v8::Handle<v8::Object> target);
+    RF24 _rf24;
+    uv_mutex_t _access;
 
 private:
-    RF24 _rf24;
-    static uv_mutex_t _access;
     Radio(string spi, uint32_t spd, uint8_t ce);
     ~Radio();
     static v8::Handle<v8::Value> New(const v8::Arguments& args);
