@@ -12,14 +12,14 @@ module.exports = {
     req.on('error', error.bind(this));
     req.end(json);
   },
-  emitSuccess: function (name) {
-    var _this = this;
+  emitSuccess: function (name, context) {
+    var _this = context || this;
     return function (obj) {
       _this.emit(name, obj);
     }
   },
-  emitError: function (name) {
-    var _this = this;
+  emitError: function (name, context) {
+    var _this = context || this;
     return function (obj) {
       if (!_this.emit(name, obj))
         throw new Error('Unhandled error ' + name + '\r\n' + obj);

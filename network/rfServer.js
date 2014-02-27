@@ -88,6 +88,10 @@ RfServer.prototype.configure = function (options) {
   radio.printDetails();
   this.ready = true;
   radio.startListening();
+
+  this.on('receiveError', function(){
+    console.log('There is a problem sending to the RFClient: %s', config.clientUrl)
+  });
 };
 RfServer.prototype.receive = function (address, data) {
   var _this = this;
@@ -101,7 +105,7 @@ RfServer.prototype.receive = function (address, data) {
   var data = {address: address, data: buffer};
   console.log('RECEIVE>>' + JSON.stringify(data));
 
-  common.sendRequest(this.client, '/receive/', data, common.emitSuccess('received'), common.emitError('receiveError'));
+  common.sendRequest(this.client, '/receive/', data, common.emitSuccess('received'), common.emitError('receiveError', _this));
 };
 RfServer.prototype.send = function (options) {
   var _this = this;
@@ -124,6 +128,7 @@ RfServer.prototype.start = function(http, config){
 };
 
 RfServer.prototype.processInbound = function(){
+  var _this = this;
   var avail = this.radio.available();
   if (avail.any){
     var data = this.radio.read();
@@ -133,7 +138,7 @@ RfServer.prototype.processInbound = function(){
     var retVal = {pipeNum: avail.pipeNum, data: buffer};
     console.log('INBOUND>>' + JSON.stringify(retVal));
 
-    common.sendRequest(this.client, '/receive/', retVal, common.emitSuccess('received'), common.emitError('receiveError'));
+    common.sendRequest(this.client, '/receive/', retVal, common.emitSuccess('received'), common.emitError('receiveError', _this));
   }
 };
 
