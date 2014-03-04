@@ -1,6 +1,6 @@
 var http = require('http');
 var config = require('./config');
-var RfServer = require('./network/rfServer');
+var Server = require('./network/server');
 
-var server = new RfServer();
-server.start(http, config);
+var server = new Server(config);
+server.start(http);

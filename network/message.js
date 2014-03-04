@@ -10,7 +10,7 @@ function setBit(b, n, on) {
     return isBitSet(b, n) ? b ^= mask[n] : b;
 }
 
-function CommandMessage(options) {
+function Message(options) {
   var _this = this;
   _this.bufferSize = options.bufferSize || 32;
   _this.control = 0;
@@ -19,7 +19,7 @@ function CommandMessage(options) {
   _this.data = [];
   _this.hops = [];
 
-  if (!options.instruction && options.data && options.data instanceof Array) {
+  if (!options.instruction && options.data && options.data instanceof Buffer) {
     var buffer = new Buffer(options.data);
     this.control = buffer.readUInt8(0);
     this.fromCommander = isBitSet(this.control, 0);
@@ -45,12 +45,13 @@ function CommandMessage(options) {
     else if (options.data != null) this.data = new Buffer(options.data.toString());
   }
 }
-CommandMessage.prototype.validate = function(){
+Message.prototype.validate = function(){
   return this.data.length + this.hops.length + 4 < this.bufferSize && this.data.length + this.hops.length > 0;
 };
-CommandMessage.prototype.toBuffer = function(){
-  var length = Math.min(this.bufferSize, 4 + this.data.length + this.hops.length);
-  var buffer = new Buffer(length);
+Message.prototype.toBuffer = function(){
+  //var length = Math.min(this.bufferSize, 4 + this.data.length + this.hops.length);
+  var buffer = new Buffer(this.bufferSize);
+  buffer.fill(0);
   this.control = setBit(this.control, 0, this.fromCommander);
   buffer[0] = this.control;
   buffer[1] = this.instruction;
@@ -63,4 +64,4 @@ CommandMessage.prototype.toBuffer = function(){
   return buffer;
 };
 
-module.exports = CommandMessage;
+module.exports = Message;
