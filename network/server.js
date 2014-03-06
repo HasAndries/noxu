@@ -16,6 +16,7 @@ function Server(config){
   this.network = network;
   network.on('inbound', this.notify('inbound'));
   network.on('outbound', this.notify('outbound'));
+  network.on('nodeExisting', this.notify('nodeExisting'));
   network.on('nodeNew', this.notify('nodeNew'));
   network.on('nodeConfirm', this.notify('nodeConfirm'));
   network.on('nodePing', this.notify('nodePing'));

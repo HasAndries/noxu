@@ -18,7 +18,8 @@ function Network(config) {
     retryDelay: 100,
     spiDev: '/dev/spidev0.0',
     pinCe: 25,
-    address: 0x00F0F0F0F0
+    inboundAddress: 0x00F0F0F0D2,
+    outboundAddress: 0x00F0F0F0F0
   };
   extend(this.config, config);
   console.log(JSON.stringify(this.config));
@@ -36,8 +37,8 @@ function Network(config) {
   radio.enableDynamicPayloads();
   radio.setAutoAck(true);
   radio.powerUp();
-  radio.openReadingPipe(1, this.config.address);
-  radio.openWritingPipe(this.config.address);
+  radio.openReadingPipe(1, this.config.inboundAddress);
+  radio.openWritingPipe(this.config.outboundAddress);
   radio.printDetails();
 
   this._loadNodes();
@@ -49,7 +50,7 @@ Network.prototype.start = function () {
   this._start();
   this.running = true;
   var _this = this;
-  Fiber(function(){
+  Fiber(function () {
     _this._loop(_this);
   }).run();
 };
@@ -68,7 +69,7 @@ Network.prototype.send = function (obj) {
   for (var ct in list) {
     var buffer = list[ct].toBuffer();
     this.radio.write(buffer);
-    this.emit('outbound', buffer);
+    this.emit('outbound', {buffer: buffer, message: list[ct]});
   }
   //start inbound
   if (this.running) this._start();
@@ -86,18 +87,18 @@ Network.prototype._loop = function (_this) {
         var data = _this.radio.read();
         //var diff = process.hrtime(start);
         //console.log('read: %dms', (diff[0] * 1e9 + diff[1])/1000000);
-
+        console.log('data: ' + JSON.stringify(data));
         var buffer = new Buffer(_this.config.bufferSize);
         buffer.fill(0);
         data.copy(buffer);
         var message = new Message({data: data, bufferSize: _this.config.bufferSize});
-        _this.emit('inbound', buffer);
-        _this._processInbound(message);
+        if (message.validate()) {
+          _this.emit('inbound', buffer);
+          _this._processInbound(message);
+        }
       }
-      //var message = new Message({fromCommander:true, instruction: 4, data: [0,1], bufferSize: 32});
-      //this.send([message]);
     }
-    sleep(10);
+    sleep(5);
   }
   console.log('loop exit: ' + JSON.stringify(_this));
 };
@@ -117,14 +118,16 @@ Network.prototype._stop = function () {
 Network.prototype._processInbound = function (message) {
   console.log(message);
   if (message.instruction == instructions.NETWORKID_REQ) {
-    var tempId = message.data.readUInt32LE(0);
-    if (this._getNodeTempId(tempId)) return;//know this tempId
+    var tempId = message.data.readUInt16LE(0);
+    var node = this._getNodeTempId(tempId);
+    if (node) this.emit('nodeExisting', node);
+    else {//allocate new node id
+      node = this._newNode(tempId);
+      this.emit('nodeNew', node);
+    }
+    message.hops.push(node.id);
     message.fromCommander = true;
     message.instruction = instructions.NETWORKID_NEW;
-    //allocate new node id
-    var node = this._newNode(tempId);
-    message.hops.push(node.id);
-    this.emit('nodeNew', node);
     this.send(message);
   }
   else if (message.instruction == instructions.NETWORKID_CONFIRM) {
