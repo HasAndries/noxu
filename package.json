@@ -16,6 +16,7 @@
     "swig": "1.x",
     "less-middleware": "*",
     "whet.extend": "0.9.x",
+    "fibers": "1.x",
     "mkdirp": "0.3.x",
     "node.extend": "1.x",
     "grunt": "0.4.x",
