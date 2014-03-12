@@ -75,7 +75,7 @@ Network.prototype.send = function (obj) {
   //write messages
   for (var ct in list) {
     var buffer = list[ct].toBuffer();
-    if (this.radio){
+    if (this.radio) {
       this.stampOutbound(list[ct]);
       this.radio.write(buffer);
     }
@@ -89,22 +89,7 @@ Network.prototype.send = function (obj) {
 Network.prototype._loop = function (_this) {
   //console.log('loop enter');
   while (_this.running) {
-    //process inbound
-    if (_this.listening) {
-      var avail = _this.radio.available();
-      if (avail.any) {
-        var time = process.hrtime()
-        var data = _this.radio.read();
-        var buffer = new Buffer(_this.config.bufferSize);
-        buffer.fill(0);
-        data.copy(buffer);
-        var message = new Message({buffer: data, bufferSize: _this.config.bufferSize});
-        if (message.validate()) {
-          _this.emit('inbound', buffer);
-          _this.processInbound(message, time);
-        }
-      }
-    }
+    _this.processInbound();
     sleep(5);
   }
 };
@@ -121,11 +106,27 @@ Network.prototype._stopListen = function () {
   this.listening = false;
 };
 //==================== Inbound ====================
-Network.prototype.processInbound = function (message, time) {
-  this.stampInbound(message, time);
-  if (message.instruction == instructions.NETWORKID_REQ) this.processInbound_NETWORKID_REQ(message);
-  else if (message.instruction == instructions.NETWORKID_CONFIRM) this.process_NETWORKID_CONFIRM(message);
-  else if (message.instruction == instructions.PULSE_CONFIRM) this.process_PULSE_CONFIRM(message);
+Network.prototype.processInbound = function () {
+  if (this.listening) {
+    var avail = this.radio.available();
+    if (avail.any) {
+      var time = process.hrtime()
+      var data = this.radio.read();
+      var buffer = new Buffer(this.config.bufferSize);
+      buffer.fill(0);
+      data.copy(buffer);
+      var message = new Message({buffer: data, bufferSize: this.config.bufferSize});
+      if (message.validate()) {
+        this.stampInbound(message, time);
+        this.emit('inbound', buffer);
+
+        //process message
+        if (message.instruction == instructions.NETWORKID_REQ) this.processInbound_NETWORKID_REQ(message);
+        else if (message.instruction == instructions.NETWORKID_CONFIRM) this.process_NETWORKID_CONFIRM(message);
+        else if (message.instruction == instructions.PULSE_CONFIRM) this.process_PULSE_CONFIRM(message);
+      }
+    }
+  }
 };
 //---------- NETWORKID_REQ ----------
 Network.prototype.processInbound_NETWORKID_REQ = function (message) {
@@ -133,7 +134,7 @@ Network.prototype.processInbound_NETWORKID_REQ = function (message) {
   var outbound = new Message({data: message.data, fromCommander: true});
   if (this.checkReserved(tempId)) {
     outbound.instruction = instructions.NETWORKID_INVALID;
-    this.emit('reservationDuplicate', {tempId: tempId});
+    this.emit('reservationInvalid', {tempId: tempId});
   }
   else {
     var reservation = this.createReservation(tempId);
@@ -151,17 +152,14 @@ Network.prototype.process_NETWORKID_CONFIRM = function (message) {
     this.emit('reservationInvalid', {networkId: message.networkId});
     this.send(outbound);
   }
-  else{
+  else {
     this.emit('reservationConfirm', {client: client});
   }
 };
 //---------- PULSE_CONFIRM ----------
 Network.prototype.process_PULSE_CONFIRM = function (message) {
-  var client = this._getClient(message.networkId);
-  var diff = process.hrtime(client.pingStart);
-  client.ping = diff[0] * 1e9 + diff[1];
-  delete client.pingStart;
-  this.emit('clientPing', client);
+  var client = this.getClient(message.networkId);
+  this.emit('pulseConfirm', {client: client});
 };
 //==================== Reservations ====================
 Network.prototype.checkReserved = function (tempId) {
@@ -184,11 +182,14 @@ Network.prototype.confirmReservation = function (networkId) {
     }
   }
   if (!reservation) return null;
-  this.clients.push({networkId: reservation.networkId, sequence: 0});
+  this.clients.push({
+    networkId: reservation.networkId, sequence: 0,
+    inbound: [], outbound: []
+  });
   return this.clients[this.clients.length - 1];
 };
-//==================== Clients ====================3
-Network.prototype.getClient = function(networkId){
+//==================== Clients ====================
+Network.prototype.getClient = function (networkId) {
   for (var ct = 0; ct < this.clients.length; ct++) {
     if (this.clients[ct].networkId == networkId) {
       return this.clients[ct];
@@ -196,34 +197,34 @@ Network.prototype.getClient = function(networkId){
   }
   return null;
 };
-Network.prototype.stampOutbound = function(message){
+//==================== Messages ====================
+Network.prototype.stampOutbound = function (message) {
   var client = this.getClient(message.networkId);
   if (!client) return;
   if (!client.outbound)
     client.outbound = [];
   message.sequence = client.sequence++;
-  client.outbound.push({sequence: message.sequence, time:process.hrtime(), message: message});
+  client.outbound.push({sequence: message.sequence, time: process.hrtime(), message: message});
 };
-Network.prototype.stampInbound = function(message, time){
+Network.prototype.stampInbound = function (message, time) {
   var client = this.getClient(message.networkId);
   if (!client) return;
   if (!client.inbound)
     client.inbound = [];
   var inbound = {sequence: message.sequence, time: time, message: message};
-  //calc ping, if response
-  for(var ct=0;ct<client.outbound.length;ct++){
-    var diff = process.hrtime(start);
-    if (client.outbound[ct].sequence == message.sequence && diff[0] < 10){
-      inbound.ping = diff[0] * 1e9 + diff[1];
+  //calc ping
+  if (client.outbound){
+    for (var ct = 0; ct < client.outbound.length; ct++) {
+      var diff = process.hrtime(start);
+      if (client.outbound[ct].sequence == message.sequence && diff[0] < 10) {
+        inbound.ping = diff[0] * 1e9 + diff[1];
+      }
     }
   }
   client.inbound.push(inbound);
 };
 
 //==================== Tools ====================
-Network.prototype.getPing = function(message){
-
-}
 function sleep(ms) {
   var fiber = Fiber.current;
   setTimeout(function () {

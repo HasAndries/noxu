@@ -11,7 +11,7 @@ Help.random = function (min, max) {
 function MockRadio(){
   this.lastBuffer = null;
   this.lastMessage = null;
-  this.queue = [];
+  this.messageQueue = [];
   this.listening = false;
 };
 MockRadio.prototype.write = function(buffer){
@@ -19,10 +19,13 @@ MockRadio.prototype.write = function(buffer){
   this.lastMessage = new Message({buffer: buffer});
 }
 MockRadio.prototype.available = function(){
-  return this.queue.length > 0;
+  return {
+    any: this.messageQueue.length > 0,
+    pipeNum: 0
+  };
 };
 MockRadio.prototype.read = function(){
-  return this.queue.shift();
+  return this.messageQueue.shift();
 };
 MockRadio.prototype.startListening = function () {
   this.listening = true;
@@ -32,7 +35,7 @@ MockRadio.prototype.stopListening = function () {
 };
 
 MockRadio.prototype.queue = function(buffer){
-  this.queue.push(buffer);
+  this.messageQueue.push(buffer);
 };
 Help.MockRadio = MockRadio;
 

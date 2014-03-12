@@ -8,17 +8,20 @@ describe('Network', function () {
   beforeEach(function () {
     network = new Network();
     network.radio = new Help.MockRadio();
+    network._startListen();
   });
-  afterEach(function(){
+  afterEach(function () {
+    network._stopListen();
   });
 
   describe('processInbound', function () {
     describe('NETWORKID_REQ', function () {
-      it('should add a new reservation for a new TempId', function (done) {
+      it('should add reservation, raise event [reservationNew] and send [NETWORKID_NEW] for a new TempId', function (done) {
         //event
-        network.on('reservationNew', function(input){
+        network.on('reservationNew', function (input) {
           expect(input.reservation.networkId).toEqual(1);
-          expect(input.reservation.tempId).toEqual(tempId);;
+          expect(input.reservation.tempId).toEqual(tempId);
+          ;
           done();
         });
 
@@ -26,25 +29,20 @@ describe('Network', function () {
         var buffer = new Buffer(2);
         buffer.writeUInt16LE(tempId, 0);
         var message = new Message({instruction: Instructions.NETWORKID_REQ, data: buffer});
-        network.processInbound(message);
+        network.radio.queue(message.toBuffer());
+
+        network.processInbound();
 
         expect(network.reservations.length).toEqual(1);
-      });
-      it('should send a NETWORKID_NEW instruction for a new Reservation', function(){
-        var tempId = Help.random(1, 10000);
-        var buffer = new Buffer(2);
-        buffer.writeUInt16LE(tempId, 0);
-        var message = new Message({instruction: Instructions.NETWORKID_REQ, data: buffer});
-        network.processInbound(message);
 
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.NETWORKID_NEW);
         expect(network.radio.lastMessage.fromCommander).toEqual(true);
         expect(network.radio.lastMessage.networkId).toEqual(network.reservations[0].networkId);
         expect(network.radio.lastMessage.data.toJSON()).toEqual(buffer.toJSON());
       });
-      it('should not add a reservation with an existing TempId', function(done){
+      it('should raise event [reservationInvalid] and send [NETWORKID_INVALID] for an existing TempId', function (done) {
         //event
-        network.on('reservationDuplicate', function(input){
+        network.on('reservationInvalid', function (input) {
           expect(input.tempId).toEqual(tempId);
           done();
         });
@@ -53,19 +51,13 @@ describe('Network', function () {
         var buffer = new Buffer(2);
         buffer.writeUInt16LE(tempId, 0);
         var message = new Message({instruction: Instructions.NETWORKID_REQ, data: buffer});
-        network.processInbound(message);
-        network.processInbound(message);
+        network.radio.queue(message.toBuffer());
+        network.radio.queue(message.toBuffer());
+
+        network.processInbound();
+        network.processInbound();
 
         expect(network.reservations.length).toEqual(1);
-      });
-      it('should send a NETWORKID_INVALID instruction for an existing TempId', function(){
-        var tempId = Help.random(1, 10000);
-        var buffer = new Buffer(2);
-        buffer.writeUInt16LE(tempId, 0);
-        var message = new Message({instruction: Instructions.NETWORKID_REQ, data: buffer});
-
-        network.processInbound(message);
-        network.processInbound(message);
 
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.NETWORKID_INVALID);
         expect(network.radio.lastMessage.fromCommander).toEqual(true);
@@ -73,10 +65,10 @@ describe('Network', function () {
         expect(network.radio.lastMessage.data.toJSON()).toEqual(buffer.toJSON());
       });
     });
-    describe('NETWORKID_CONFIRM', function (){
-      it('should add a new Client in place of a reservation', function(done){
+    describe('NETWORKID_CONFIRM', function () {
+      it('should raise event [reservationConfirm], remove reservation and add a new Client', function (done) {
         //event
-        network.on('reservationConfirm', function(input){
+        network.on('reservationConfirm', function (input) {
           expect(input.client.networkId).toEqual(1);
           done();
         });
@@ -85,34 +77,42 @@ describe('Network', function () {
         var buffer = new Buffer(2);
         buffer.writeUInt16LE(tempId, 0);
         var message = new Message({instruction: Instructions.NETWORKID_REQ, data: buffer});
-        network.processInbound(message);
-
-        //send confirm
+        network.radio.queue(message.toBuffer());
         message = new Message({instruction: Instructions.NETWORKID_CONFIRM, networkId: 1, data: []});
-        network.processInbound(message);
+        network.radio.queue(message.toBuffer());
+
+        network.processInbound();
+        network.processInbound();
 
         expect(network.reservations.length).toEqual(0);
         expect(network.clients.length).toEqual(1);
-        expect(network.clients[0]).toEqual({networkId: 1, sequence: 0});
+        expect(network.clients[0]).toEqual({networkId: 1, sequence: 0, inbound: [], outbound: []});
       });
-      it('should not add a new Client in place of an invalid reservation', function(done){
+      it('should raise event [reservationInvalid] and send [NETWORKID_INVALID] for an invalid reservation', function (done) {
         //event
-        network.on('reservationInvalid', function(input){
+        network.on('reservationInvalid', function (input) {
           expect(input.networkId).toEqual(1);
           done();
         });
         //send confirm
         var message = new Message({instruction: Instructions.NETWORKID_CONFIRM, networkId: 1, data: []});
-        network.processInbound(message);
+        network.radio.queue(message.toBuffer());
+
+        network.processInbound();
 
         expect(network.reservations.length).toEqual(0);
         expect(network.clients.length).toEqual(0);
+
+        expect(network.radio.lastMessage.instruction).toEqual(Instructions.NETWORKID_INVALID);
+        expect(network.radio.lastMessage.fromCommander).toEqual(true);
+        expect(network.radio.lastMessage.networkId).toEqual(0);
+        expect(network.radio.lastMessage.data.toJSON()).toEqual([]);
       });
     });
-    describe('PULSE_CONFIRM', function (){
-      it('should add a new Client in place of a reservation', function(done){
+    describe('PULSE_CONFIRM', function () {
+      it('should raise event [pulseConfirm]', function (done) {
         //event
-        network.on('reservationConfirm', function(input){
+        network.on('pulseConfirm', function (input) {
           expect(input.client.networkId).toEqual(1);
           done();
         });
@@ -121,32 +121,29 @@ describe('Network', function () {
         var buffer = new Buffer(2);
         buffer.writeUInt16LE(tempId, 0);
         var message = new Message({instruction: Instructions.NETWORKID_REQ, data: buffer});
-        network.processInbound(message);
-
-        //send confirm
+        network.radio.queue(message.toBuffer());
         message = new Message({instruction: Instructions.NETWORKID_CONFIRM, networkId: 1, data: []});
-        network.processInbound(message);
+        network.radio.queue(message.toBuffer());
+        message = new Message({instruction: Instructions.PULSE_CONFIRM, networkId: 1, data: []});
+        network.radio.queue(message.toBuffer());
+
+        network.processInbound();
+        network.processInbound();
+
+        //need to do send ping here for outbound message
+        network.processInbound();
 
         expect(network.reservations.length).toEqual(0);
         expect(network.clients.length).toEqual(1);
-        expect(network.clients[0]).toEqual({networkId: 1, sequence: 0});
-      });
-      it('should not add a new Client in place of an invalid reservation', function(done){
-        //event
-        network.on('reservationInvalid', function(input){
-          expect(input.networkId).toEqual(1);
-          done();
-        });
-        //send confirm
-        var message = new Message({instruction: Instructions.NETWORKID_CONFIRM, networkId:1, data: []});
-        network.processInbound(message);
+        expect(network.clients[0].networkId).toEqual(1);
+        expect(network.clients[0].sequence).toEqual(0);
 
-        expect(network.reservations.length).toEqual(0);
-        expect(network.clients.length).toEqual(0);
+        expect(network.clients[0].inbound.length).toEqual(1);
+        expect(network.clients[0].outbound.length).toEqual(0);
       });
     });
   });
-  describe('send', function(){
+  describe('send', function () {
 
   });
 });
