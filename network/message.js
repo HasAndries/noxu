@@ -1,3 +1,5 @@
+var Instructions = require('./instructions');
+
 function isBitSet(b, n) {
   var mask = [128, 64, 32, 16, 8, 4, 2, 1];
   return ((b & mask[n]) != 0);
@@ -12,55 +14,54 @@ function setBit(b, n, on) {
 
 function Message(options) {
   var _this = this;
-  _this.bufferSize = options.bufferSize || 32;
+  _this.bufferSize = (options || {}).bufferSize || 32;
   _this.control = 0;
-  _this.fromCommander = 0;
+  _this.fromCommander = true;
   _this.instruction = null;
-  _this.data = [];
-  _this.hops = [];
+  _this.sequence = 0;
+  _this.networkId = 0;
+  _this.data = null;
 
-  if (!options.instruction && options.data && options.data instanceof Buffer) {
-    var buffer = new Buffer(options.data);
+  if (options && options.buffer) {
+    var buffer = options.buffer instanceof Buffer && options.buffer || new Buffer(options.buffer);
     this.control = buffer.readUInt8(0);
     this.fromCommander = isBitSet(this.control, 0);
     this.instruction = buffer.readUInt8(1);
-    var dataLength = buffer.readUInt8(2);
-    var dataStart = 4;
-    var hopCount = buffer.readUInt8(3);
-    var hopStart = dataStart + dataLength;
+    this.sequence = buffer.readUInt8(2);
+    this.networkId = buffer.readUInt32LE(3);
+    var dataLength = buffer.readUInt8(7);
+    var dataStart = 8;
 
-    if (dataLength + hopCount + 4 > this.bufferSize) throw new Error('CommandMessage cannot have more content than BufferSize');
+    if (dataLength + 7 > this.bufferSize) throw new Error('CommandMessage cannot have more content than BufferSize');
 
     this.data = new Buffer(dataLength);
     buffer.copy(this.data, 0, dataStart, dataStart + dataLength);
-    var hops = new Buffer(hopCount);
-    buffer.copy(hops, 0, hopStart, hopStart + hopCount);
-    this.hops = hops.toJSON();
   }
-  else {
-    this.fromCommander = options.fromCommander;
-    this.instruction = options.instruction;
+  else if(options) {
+    this.fromCommander = typeof options.fromCommander == 'undefined' && true || options.fromCommander;
+    this.instruction = options.instruction || null;
+    this.sequence = options.sequence || 0;
+    this.networkId = options.networkId || 0;
     if (options.data instanceof Buffer) this.data = options.data;
     else if (options.data instanceof Array || options.data instanceof String) this.data = new Buffer(options.data);
     else if (options.data != null) this.data = new Buffer(options.data.toString());
   }
 }
 Message.prototype.validate = function(){
-  return this.data.length + this.hops.length + 4 < this.bufferSize && this.data.length + this.hops.length > 0;
+  return this.data.length + 7 < this.bufferSize && Instructions.byVal(this.instruction) != null;
 };
 Message.prototype.toBuffer = function(){
-  //var length = Math.min(this.bufferSize, 4 + this.data.length + this.hops.length);
+  var dataLength = this.data && this.data.length || 0;
   var buffer = new Buffer(this.bufferSize);
   buffer.fill(0);
   this.control = setBit(this.control, 0, this.fromCommander);
   buffer[0] = this.control;
   buffer[1] = this.instruction;
-  buffer[2] = this.data.length;
-  buffer[3] = this.hops.length;
-
-  this.data.copy(buffer, 4, 0);
-  for(var i=0;i<this.hops.length;i++)
-    buffer.writeUInt8(this.hops[i], 4 + this.data.length);
+  buffer[2] = this.sequence;
+  buffer.writeUInt32LE(this.networkId, 3);
+  buffer[7] = dataLength;
+  if (dataLength)
+    this.data.copy(buffer, 8, 0);
   return buffer;
 };
 

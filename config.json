@@ -1,13 +1,13 @@
 {
   "base": {
-
+    "webPort": "3000"
   },
   "andries": {
+    "ioNetwork": "http://192.168.1.4:9100/",
     "clientUrl": "http://192.168.1.2:9200/",
     "serverUrl": "http://192.168.1.4:9100/"
   },
   "development": {
-    "serverUrl": "http://192.168.1.4:9100/"
   },
   "production": {
 
