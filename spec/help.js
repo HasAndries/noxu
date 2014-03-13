@@ -1,4 +1,5 @@
 var Message = require('../network/message');
+var Instructions = require('../network/instructions');
 
 function Help() {
 
@@ -8,6 +9,7 @@ Help.random = function (min, max) {
   return Math.floor((Math.random() * max) + min);
 }
 
+//========== MockRadio ==========
 function MockRadio(){
   this.lastBuffer = null;
   this.lastMessage = null;

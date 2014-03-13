@@ -1,0 +1,2 @@
+rm -rf out
+jsdoc network/
