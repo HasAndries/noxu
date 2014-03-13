@@ -1,12 +1,11 @@
 {
   "base": {
     "webPort": "3000",
-    "networkPort": "9440"
+    "networkPort": "9440",
+    "networkPoll": "10000"
   },
   "andries": {
-    "ioNetwork": "http://192.168.1.4:9100/",
-    "clientUrl": "http://192.168.1.2:9200/",
-    "serverUrl": "http://192.168.1.4:9100/"
+    "ioNetwork": "http://192.168.1.4:9440/"
   },
   "development": {
   },

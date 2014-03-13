@@ -3,7 +3,7 @@ var io = require('socket.io');
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 
-//========== INIT ==========
+//========== init ==========
 function Api(ioServer) {
   this.ioServer = ioServer;
   this.setupIoServer(ioServer);
@@ -11,6 +11,7 @@ function Api(ioServer) {
 util.inherits(Api, EventEmitter);
 
 Api.prototype.setupIoServer = function(ioServer){
+  var _this = this;
   ioServer.of('/api')
     .on('connection', function (socket) {
       socket.on('', _this.root);
@@ -18,17 +19,7 @@ Api.prototype.setupIoServer = function(ioServer){
       socket.on('send', _this.send);
     });
 };
-Api.prototype.setupIoNetwork = function(ioNetwork){
-  ioNetwork.on('connect', function(){
 
-  });
-  ioNetwork.on('nodeNew')
-};
-Api.prototype.start = function () {
-  this.ioNetwork = io.connect(config.ioNetwork);
-  this.setupIoNetwork(this.ioNetwork);
-};
-//========== SERVER ==========
 Api.prototype.root = function (input) {
   return {name: 'Noxu Api', version: '0.0.0'}
 };

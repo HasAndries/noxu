@@ -139,6 +139,7 @@ describe('Network', function () {
       });
     });
   });
+  //========== send ==========
   describe('send', function () {
     it('should raise event [outbound] and send the message to the radio', function(done){
       //setup
@@ -156,6 +157,20 @@ describe('Network', function () {
       network.send(message);
 
       expect(network.radio.lastMessage.toBuffer().toJSON()).toEqual(message.toBuffer().toJSON());
+    });
+  });
+  //========== getClients ==========
+  describe('getClients', function () {
+    it('should return list of clients', function(){
+      //setup
+      var reservation = createReservation(network);
+      confirmReservation(network, reservation.networkId);
+      reservation = createReservation(network);
+      confirmReservation(network, reservation.networkId);
+
+      var clients = network.getClients();
+      expect(clients.length).toEqual(2);
+      expect(clients[0]).toEqual({networkId: 1, sequence: 0, inbound: [], outbound: []});
     });
   });
 });

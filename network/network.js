@@ -96,8 +96,6 @@ function Network(config) {
     radio.openWritingPipe(this.config.outboundAddress);
     radio.printDetails();
   }
-
-  //this._loadClients();
 }
 util.inherits(Network, EventEmitter);
 
@@ -145,6 +143,15 @@ Network.prototype.send = function (obj) {
   if (this.running) this._startListen();
 };
 
+/**
+ * Returns a list of currently connected network clients
+ * @returns {object} List of client objects
+ */
+Network.prototype.getClients = function (socket) {
+  return function(){
+    socket.emit('clients', extend([], this.clients));
+  }.bind(this);
+};
 //========== PRIVATE ==========
 Network.prototype._loop = function (_this) {
   //console.log('loop enter');

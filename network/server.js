@@ -24,17 +24,22 @@ function Server(config, http) {
     res.end('Network Server');
   });
 
-  //server
-  this.server = http.createServer(this.app);
-  this.ioServer = io.listen(this.server);
-
   //Network
   var network = new Network(config);
   this.network = network;
-  var events = ['outbound', 'inbound', 'reservationNew', 'clientNew'];
-  for (var i in events) {
-    network.on(events[i], this.notify(events[i]));
-  }
+  network.on('outbound', this.notify('outbound'));
+  network.on('inbound', this.notify('inbound'));
+  network.on('reservationNew', this.notify('reservationNew'));
+  network.on('clientNew', this.notify('clientNew'));
+
+  //Server
+  this.server = http.createServer(this.app);
+  this.io = io.listen(this.server);
+  this.io.sockets.on('connection', function(socket){
+    console.log('connection: ' + socket.id);
+    socket.on('getClients', network.getClients(socket));
+    socket.on('send', network.send);
+  });
 }
 
 Server.prototype.start = function(){
@@ -45,11 +50,11 @@ Server.prototype.start = function(){
   this.network.start();
 };
 
-Server.prototype.notify = function (name) {
+Server.prototype.notify = function (name, socket) {
   var _this = this;
   return function (obj) {
-    _this.ioServer.emit(name, obj);
-    console.log(name + ' : ' + JSON.stringify(obj));
+    (socket || _this.io.sockets).emit(name, obj);
+    console.log('Notify: ' + name);
   }
 }
 
