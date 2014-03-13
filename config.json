@@ -1,6 +1,7 @@
 {
   "base": {
-    "webPort": "3000"
+    "webPort": "3000",
+    "networkPort": "9440"
   },
   "andries": {
     "ioNetwork": "http://192.168.1.4:9100/",

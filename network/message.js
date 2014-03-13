@@ -24,6 +24,7 @@ function Message(options) {
 
   if (options && options.buffer) {
     var buffer = options.buffer instanceof Buffer && options.buffer || new Buffer(options.buffer);
+    var buffer = new Buffer(options.buffer);
     this.control = buffer.readUInt8(0);
     this.fromCommander = isBitSet(this.control, 0);
     this.instruction = buffer.readUInt8(1);

@@ -35,9 +35,9 @@ catch (ex) {
  * @property {int} networkId - The NetworkId that is invalid
  */
 /**
- * @event Network#reservationConfirm
+ * @event Network#clientNew
  * @type {object}
- * @property {object} client - Client that is confirmed
+ * @property {object} client - Client added
  */
 /**
  * @event Network#pulseConfirm
@@ -46,20 +46,21 @@ catch (ex) {
  */
 
 
- /**
+/**
  * @class
  * This is the network code to interface with RF devices
  *
  * @fires Network#inbound
  * @fires Network#reservationNew
  * @fires Network#reservationInvalid
- * @fires Network#reservationConfirm
+ * @fires Network#clientNew
  * @fires Network#pulseConfirm
  *
  * @constructor
  * @param {object} config - The RF config to use
  */
 function Network(config) {
+  EventEmitter.call(this);
   this.clients = [];
   this.config = {
     bufferSize: 32,
@@ -135,7 +136,7 @@ Network.prototype.send = function (obj) {
   for (var ct in list) {
     var buffer = list[ct].toBuffer();
     if (this.radio) {
-      this.stampOutbound(list[ct]);
+      this._stampOutbound(list[ct]);
       this.radio.write(buffer);
     }
     this.emit('outbound', {buffer: buffer, message: list[ct]});
@@ -213,7 +214,7 @@ Network.prototype._process_NETWORKID_CONFIRM = function (message) {
     this.send(outbound);
   }
   else {
-    this.emit('reservationConfirm', {client: client});
+    this.emit('clientNew', {client: client});
   }
 };
 //---------- PULSE_CONFIRM ----------
@@ -259,7 +260,7 @@ Network.prototype._getClient = function (networkId) {
 };
 //==================== Messages ====================
 Network.prototype._stampOutbound = function (message) {
-  var client = this.getClient(message.networkId);
+  var client = this._getClient(message.networkId);
   if (!client) return;
   if (!client.outbound)
     client.outbound = [];
@@ -267,13 +268,13 @@ Network.prototype._stampOutbound = function (message) {
   client.outbound.push({sequence: message.sequence, time: process.hrtime(), message: message});
 };
 Network.prototype._stampInbound = function (message, time) {
-  var client = this.getClient(message.networkId);
+  var client = this._getClient(message.networkId);
   if (!client) return;
   if (!client.inbound)
     client.inbound = [];
   var inbound = {sequence: message.sequence, time: time, message: message};
   //calc ping
-  if (client.outbound){
+  if (client.outbound) {
     for (var ct = 0; ct < client.outbound.length; ct++) {
       if (client.outbound[ct].sequence == message.sequence) {
         var diff = process.hrtime(inbound.time);

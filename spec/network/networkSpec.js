@@ -77,12 +77,12 @@ describe('Network', function () {
       });
     });
     describe('NETWORKID_CONFIRM', function () {
-      it('should raise event [reservationConfirm], remove reservation and add a new Client', function (done) {
+      it('should raise event [clientNew], remove reservation and add a new Client', function (done) {
         //setup
         var reservation = createReservation(network);
 
         //event
-        network.on('reservationConfirm', function (input) {
+        network.on('clientNew', function (input) {
           expect(input.client.networkId).toEqual(1);
           done();
         });
