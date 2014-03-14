@@ -34,6 +34,7 @@ function Server(config, http) {
 
   //Server
   this.server = http.createServer(this.app);
+  io.set('log level', 1);
   this.io = io.listen(this.server);
   this.io.sockets.on('connection', function(socket){
     console.log('connection: ' + socket.id);

@@ -51,22 +51,22 @@ Network.prototype._clients = function(obj){
 };
 
 Network.prototype._outbound = function(obj){
-  console.log('outbound');
+  console.log('outbound:'  + JSON.stringify(obj));
 };
 Network.prototype._inbound = function(obj){
-  console.log('inbound');
+  console.log('inbound:'  + JSON.stringify(obj));
 };
 Network.prototype._reservationNew = function(obj){
-  console.log('reservationNew');
+  console.log('reservationNew:'  + JSON.stringify(obj));
 };
 Network.prototype._reservationInvalid = function(obj){
-  console.log('reservationInvalid');
+  console.log('reservationInvalid:'  + JSON.stringify(obj));
 };
 Network.prototype._clientNew = function(obj){
-  console.log('clientNew');
+  console.log('clientNew:'  + JSON.stringify(obj));
 };
 Network.prototype._pulseConfirm = function(obj){
-  console.log('pulseConfirm');
+  console.log('pulseConfirm:'  + JSON.stringify(obj));
 };
 
 //==================== Tools ====================
