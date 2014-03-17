@@ -5,20 +5,12 @@ Noxu Commander
 All:
 `npm install`
 `npm install -g grunt-cli supervisor`
-
-Raspberry Pi:
-`npm install spi rpi-gpio`
-```
-git clone git://github.com/quick2wire/quick2wire-gpio-admin.git
-cd quick2wire-gpio-admin
-make
-sudo make install
-sudo adduser $USER gpio
-```
+RF24
+`cd rf24` & `grunt rebuild`
 
 ##Running
-###Run Admin application
-`./run-admin` or `./debug-admin`
+###Run Web application
+`./run-web` or `./debug-web`
 
 ###Run Network server
 `./run-network` or `./debug-network`
@@ -41,7 +33,19 @@ In config.json, add a new config section [NEW], and add config settings wanted.
 add a new file(without extension) to the project called [NEW], with content:
 ```
 grunt build-network
-scp -r build/** pi@10.0.0.236:/home/pi/noxu_commander
+scp -r build/** pi@192.168.1.3:/var/www/noxu_network
 ```
 Change the scp destination to own Raspberry Pi, and do:
 `chmod +x [NEW]`
+
+##Services
+###nginx block
+location /noxu_network/ {
+    proxy_pass http://localhost:9440/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+
+###init.d
+Copy `service/noxu` to `/etc/init.d` and use as normal service:
+`/etc/init.d/noxu start` & `/etc/init.d/noxu stop`
