@@ -2,26 +2,30 @@ var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 var Fiber = require('fibers');
 
-function Network(config, ioClient){
+function Network(config, wsClient){
   EventEmitter.call(this);
-  var _this = this;
   this.config = config;
 
-  this.io = ioClient.connect(config.ioNetwork);
-  this.io.on('connect', function(){
+  //Message Map
+  this.messageMap = {
+    'network:clients': this._networkClients,
+    'network:outbound': this._networkOutbound,
+    'network:inbound': this._networkInbound,
+    'network:reservationNew': this._networkReservationNew,
+    'network:reservationInvalid': this._networkReservationInvalid,
+    'network:clientNew': this._networkClientNew,
+    'network:pulseConfirm': this._networkPulseConfirm
+  };
+
+  this.wsClient = wsClient;
+  wsClient.on('open', function(){
     console.log('network connected');
   });
-  this.io.on('outbound', this._outbound);
-  this.io.on('inbound', this._inbound);
-  this.io.on('reservationNew', this._reservationNew);
-  this.io.on('reservationInvalid', this._reservationInvalid);
-  this.io.on('clientNew', this._clientNew);
-  this.io.on('pulseConfirm', this._pulseConfirm);
-
-  this.io.on('clients', this._clients);
+  wsClient.on('message', this._respond(wsClient));
 }
 util.inherits(Network, EventEmitter);
 
+//==================== Public ====================
 Network.prototype.start = function(){
   this.running = true;
   var _this = this;
@@ -34,39 +38,47 @@ Network.prototype.stop = function () {
 };
 
 Network.prototype.getClients = function(){
-  this.io.emit('getClients');
+  this.wsClient.send({type:'network:clients'});
 };
 
+//==================== Private ====================
 Network.prototype._loop = function(_this){
   while (_this.running) {
-    _this.getClients();
+    //_this.getClients();
     sleep(_this.config.networkPoll || 1000);
   }
 };
 
-Network.prototype._clients = function(obj){
+Network.prototype._networkClients = function(obj){
   console.log('clients: ' + JSON.stringify(obj));
   this.clients = obj;
   this.emit('clients', this.clients);
 };
 
-Network.prototype._outbound = function(obj){
+Network.prototype._networkOutbound = function(obj){
   console.log('outbound:'  + JSON.stringify(obj));
 };
-Network.prototype._inbound = function(obj){
+Network.prototype._networkInbound = function(obj){
   console.log('inbound:'  + JSON.stringify(obj));
 };
-Network.prototype._reservationNew = function(obj){
+Network.prototype._networkReservationNew = function(obj){
   console.log('reservationNew:'  + JSON.stringify(obj));
 };
-Network.prototype._reservationInvalid = function(obj){
+Network.prototype._networkReservationInvalid = function(obj){
   console.log('reservationInvalid:'  + JSON.stringify(obj));
 };
-Network.prototype._clientNew = function(obj){
+Network.prototype._networkClientNew = function(obj){
   console.log('clientNew:'  + JSON.stringify(obj));
 };
-Network.prototype._pulseConfirm = function(obj){
+Network.prototype._networkPulseConfirm = function(obj){
   console.log('pulseConfirm:'  + JSON.stringify(obj));
+};
+
+Network.prototype._respond = function(wsClient){
+  return function(message){
+    var func = this.messageMap[message.type];
+    wsClient.send(func(message.data));
+  }
 };
 
 //==================== Tools ====================

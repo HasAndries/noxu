@@ -1,28 +1,11 @@
-var express = require('express');
-var io = require('socket.io');
+var WebSocketServer = require('ws').Server;
 var Network = require('./network');
 
-function Server(config, http) {
+function Server(config) {
   var _this = this;
   _this.config = config;
   this.network = null;
   this.app = null;
-
-  //express
-  var app = express();
-  this.app = app;
-  var env = app.get('env');
-  app.set('port', this.config.webPort);
-  if (env != 'production') {
-    app.use(express.errorHandler());
-  }
-  app.use(express.logger('dev'));
-  app.use(express.bodyParser());
-  app.use(express.methodOverride());
-  app.use(app.router);
-  app.get('/', function(req, res){
-    res.end('Network Server');
-  });
 
   //Network
   var network = new Network(config);
@@ -32,22 +15,22 @@ function Server(config, http) {
   network.on('reservationNew', this.notify('reservationNew'));
   network.on('clientNew', this.notify('clientNew'));
 
+  //Message Map
+  this.messageMap = {
+    'getClients': network.getClients,
+    'send': network.send
+  };
+
   //Server
-  this.server = http.createServer(this.app);
-  this.io = io.listen(this.server);
-  this.io.set('log level', 1);
-  this.io.sockets.on('connection', function(socket){
-    console.log('connection: ' + socket.id);
-    socket.on('getClients', network.getClients(socket));
-    socket.on('send', network.send);
-  });
+  this.wsServer = new WebSocketServer({port: _this.config.networkPort});
+  this.wsServer.on('connection', function(wsClient){
+    console.log('connection');
+    wsClient.on('message', this.respond(wsClient));
+  }.bind(this));
 }
 
+
 Server.prototype.start = function(){
-  var _this = this;
-  this.server.listen(_this.config.networkPort, function () {
-    console.log('Network server listening on port ' + _this.config.networkPort);
-  });
   this.network.start();
 };
 
@@ -58,5 +41,11 @@ Server.prototype.notify = function (name, socket) {
     console.log('Notify: ' + name);
   }
 }
+Server.prototype.respond = function(wsClient){
+  return function(message){
+    var func = this.messageMap[message.type];
+    wsClient.send(func(message.data));
+  }
+};
 
 module.exports = Server;

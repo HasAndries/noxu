@@ -147,10 +147,8 @@ Network.prototype.send = function (obj) {
  * Returns a list of currently connected network clients
  * @returns {object} List of client objects
  */
-Network.prototype.getClients = function (socket) {
-  return function(){
-    socket.emit('clients', extend([], this.clients));
-  }.bind(this);
+Network.prototype.getClients = function () {
+  return extend([], this.clients);
 };
 //========== PRIVATE ==========
 Network.prototype._loop = function (_this) {

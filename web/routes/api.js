@@ -4,29 +4,34 @@ var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 
 //========== init ==========
-function Api(ioServer) {
-  this.ioServer = ioServer;
-  this.setupIoServer(ioServer);
+function Api(wsServer) {
+  this.wsServer = wsServer;
+  this.messageMap = {
+    'client:all': this.clientAll,
+    'client:send': this.clientSend
+  };
+
+  this.wsServer.on('connection', function(wsClient){
+    console.log('Api connection: ' + JSON.stringify(wsClient));
+    wsClient.on('message', this.respond(wsClient));
+  });
 }
 util.inherits(Api, EventEmitter);
 
-Api.prototype.setupIoServer = function(ioServer){
-  var _this = this;
-  ioServer.of('/api')
-    .on('connection', function (socket) {
-      socket.on('', _this.root);
-      socket.on('getNodes', _this.getNodes);
-      socket.on('send', _this.send);
-    });
+Api.prototype.respond = function(wsClient){
+  return function(message){
+    var func = this.messageMap[message.type];
+    wsClient.send(func(message.data));
+  }
 };
 
-Api.prototype.root = function (input) {
+Api.prototype.root = function () {
   return {name: 'Noxu Api', version: '0.0.0'}
 };
-Api.prototype.getNodes = function (input) {
+Api.prototype.clientAll = function (input) {
 
 };
-Api.prototype.send = function (input) {
+Api.prototype.clientSend = function (input) {
 
 };
 

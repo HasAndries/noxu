@@ -1,8 +1,8 @@
 var express = require('express');
 var swig = require('swig');
 var path = require('path');
-var io = require('socket.io');
-var ioClient = require('socket.io-client')
+var WebSocketServer = require('ws').Server;
+var WebSocket = require('ws');
 
 var Api = require('./routes/api');
 var Pages = require('./routes/pages');
@@ -38,16 +38,20 @@ function Web(config, http){
 
   //server
   this.server = http.createServer(this.app);
-  this.ioServer = io.listen(this.server);
-  this.api = new Api(this.ioServer);
+  this.wsServer = new WebSocketServer({port: _this.config.webSocketPort});
+  this.wsClient = new WebSocket(_this.config.networkUrl);
 
-  this.network = new Network(this.config, ioClient);
+  //web
+  this.api = new Api(this.wsServer);
+
+  //network
+  this.network = new Network(this.config, this.wsClient);
 }
 
 Web.prototype.start = function(){
   var _this = this;
   _this.server.listen(_this.config.webPort, function () {
-    console.log('Admin server listening on port ' + _this.config.webPort);
+    console.log('Web server listening on port ' + _this.config.webPort);
   });
   this.network.start();
 };

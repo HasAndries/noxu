@@ -1,12 +1,12 @@
 {
   "base": {
-    "webPort": "3000",
+    "webPort": "9400",
+    "webSocketPort": "9410",
     "networkPort": "9440",
     "networkPoll": "10000",
-    "ioNetwork": "http://hasandries.com:9440/"
+    "networkUrl": "ws://hasandries.com/"
   },
   "andries": {
-    "ioNetwork_tmp": "http://192.168.1.4:9440/"
   },
   "development": {
   },

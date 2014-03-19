@@ -1,0 +1,13 @@
+<html>
+<head>
+  <script type="text/javascript" src="http://hasandries.com/socket.io/socket.io.js"></script>
+  <script type="text/javascript">
+    var socket = io.connect('http://hasandries.com/');
+    socket.on('connect', function (data) {
+      console.log(socket);
+      socket.emit('getClients', { });
+    });
+  </script>
+</head>
+<body>test</body>
+</html>
