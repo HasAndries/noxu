@@ -4,7 +4,7 @@
     "webSocketPort": "9410",
     "networkPort": "9440",
     "networkPoll": "10000",
-    "networkUrl": "ws://hasandries.com/"
+    "networkUrl": "http://hasandries.com/"
   },
   "andries": {
   },

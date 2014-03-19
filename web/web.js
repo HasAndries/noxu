@@ -2,7 +2,7 @@ var express = require('express');
 var swig = require('swig');
 var path = require('path');
 var WebSocketServer = require('ws').Server;
-var WebSocket = require('ws');
+var ioClient = require('socket.io-client');
 
 var Api = require('./routes/api');
 var Pages = require('./routes/pages');
@@ -39,13 +39,13 @@ function Web(config, http){
   //server
   this.server = http.createServer(this.app);
   this.wsServer = new WebSocketServer({port: _this.config.webSocketPort});
-  this.wsClient = new WebSocket(_this.config.networkUrl);
+  this.ioClient = ioClient.connect(_this.config.networkUrl);
 
   //web
   this.api = new Api(this.wsServer);
 
   //network
-  this.network = new Network(this.config, this.wsClient);
+  this.network = new Network(this.config, this.ioClient);
 }
 
 Web.prototype.start = function(){

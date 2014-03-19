@@ -1,4 +1,4 @@
-var WebSocketServer = require('ws').Server;
+var io = require('socket.io');
 var Network = require('./network');
 
 function Server(config) {
@@ -17,15 +17,17 @@ function Server(config) {
 
   //Message Map
   this.messageMap = {
-    'getClients': network.getClients,
-    'send': network.send
+    'clients': {key: 'clients', func: network.getClients},
+    'send': {key: 'send', func: network.send}
   };
 
   //Server
-  this.wsServer = new WebSocketServer({port: _this.config.networkPort});
-  this.wsServer.on('connection', function(wsClient){
+  this.io = io.listen(parseInt(_this.config.networkPort));
+  this.io.sockets.on('connection', function(socket){
     console.log('connection');
-    wsClient.on('message', this.respond(wsClient));
+    for(var name in this.messageMap){
+      socket.on(name, this.respond(socket, this.messageMap[name].key, this.messageMap[name].func));
+    }
   }.bind(this));
 }
 
@@ -41,11 +43,11 @@ Server.prototype.notify = function (name, socket) {
     console.log('Notify: ' + name);
   }
 }
-Server.prototype.respond = function(wsClient){
-  return function(message){
-    var func = this.messageMap[message.type];
-    wsClient.send(func(message.data));
-  }
+Server.prototype.respond = function(socket, key, func){
+  return function(data){
+    console.log(data);
+    socket.emit(key, func(data));
+  }.bind(this);
 };
 
 module.exports = Server;
