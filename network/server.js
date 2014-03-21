@@ -26,7 +26,7 @@ function Server(config) {
   this.io.sockets.on('connection', function(socket){
     console.log('connection');
     for(var name in this.messageMap){
-      socket.on(name, this.respond(socket, this.messageMap[name].key, this.messageMap[name].func));
+      socket.on(name, this.respond(socket, this.messageMap[name].key, this.messageMap[name].func.bind(network)));
     }
   }.bind(this));
 }
