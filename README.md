@@ -49,157 +49,36 @@ make
 sudo make install
 ```
 
-###setup nginx
+###nginx
 ```
 sudo mkdir /usr/local/nginx/sites-available
 sudo mkdir /usr/local/nginx/sites-enabled
 ```
 ####config file
-`sudo pico /usr/local/nginx/conf/nginx.conf`
-```
-user www-data;
-worker_processes  1;
-
-events {
-    worker_connections  1024;
-}
-
-http {
-    include       mime.types;
-    default_type  application/octet-stream;
-
-    sendfile        on;
-
-    keepalive_timeout  65;
-
-    gzip  on;
-
-    include /usr/local/nginx/sites-enabled/*;
-
-}
-```
+`sudo cp setup/nginx/nginx.conf /usr/local/nginx/conf/`
 
 ####default site
-`sudo pico /usr/local/nginx/sites-available/default`
-```
-server {
-    listen       80;
-    server_name  localhost;
-
-    location / {
-        root   html;
-        index  index.html index.htm;
-    }
-    # redirect server error pages to the static page /50x.html
-    error_page   500 502 503 504  /50x.html;
-    location = /50x.html {
-        root   html;
-    }
-}
-```
-`sudo ln -s /usr/local/nginx/sites-available/default /usr/local/nginx/sites-enabled/default`
+`sudo cp setup/nginx/default /usr/local/nginx/sites-available/`
+`sudo ln -s /usr/local/nginx/sites-available/default /usr/local/nginx/sites-enabled/`
 
 ####noxu_network site
-`sudo pico /usr/local/nginx/sites-available/noxu_network`
-```
-upstream backend {
-    server 127.0.0.1:9440;
-}
-
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    ''      close;
-}
-
-server {
-    listen 80;
-    server_name network.hasandries.com;
-    location / {
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header Host $http_host;
-        proxy_set_header X-NginX-Proxy true;
-
-        proxy_pass http://backend/;
-        proxy_redirect off;
-
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
-
-        access_log /var/log/nginx/noxu_network.log;
-        error_log  /var/log/nginx/noxu_network.log;
-    }
-}
-```
-`sudo ln -s /usr/local/nginx/sites-available/noxu_network /usr/local/nginx/sites-enabled/noxu_network`
-
-###nginx block
-upstream backend {
-    server localhost:9440;
-}
-server {
-    listen 80;
-
-    root /var/www/noxu_network;
-    index index.html index.htm;
-
-    access_log /var/log/nginx/noxu_network.log;
-    error_log  /var/log/nginx/noxu_network.log;
-
-    server_name hasandries.com;
-
-    client_max_body_size 20M;
-
-    location /socket {
-        proxy_pass http://backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-
-    location / {
-        proxy_http_version 1.1;
-        proxy_set_header   X-Real-IP        $remote_addr;
-        proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
-        proxy_set_header   X-NginX-Proxy    true;
-        proxy_set_header   Host             $http_host;
-        proxy_set_header   Upgrade          $http_upgrade;
-        proxy_redirect     off;
-        proxy_pass         http://backend;
-    }
-}
-
-upstream backend {
-    server 127.0.0.1:9440;
-}
-
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    ''      close;
-}
-
-server {
-    listen 80;
-    server_name hasandries.com;
-    location / {
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header Host $http_host;
-        proxy_set_header X-NginX-Proxy true;
-
-        proxy_pass http://backend/;
-        proxy_redirect off;
-
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
-
-        access_log /var/log/nginx/noxu_network.log;
-        error_log  /var/log/nginx/noxu_network.log;
-    }
-}
+`sudo cp setup/nginx/noxu_network /usr/local/nginx/sites-available/`
+`sudo ln -s /usr/local/nginx/sites-available/noxu_network /usr/local/nginx/sites-enabled/`
 
 ###init.d
-Copy `service/noxu` to `/etc/init.d` and use as normal service:
-`/etc/init.d/noxu start` & `/etc/init.d/noxu stop`
+`sudo cp setup/init.d/nginx /etc/init.d`
+`sudo cp setup/init.d/noxu /etc/init.d`
+
+####usage
+nginx start - `/etc/init.d/nginx start`
+nginx stop - `/etc/init.d/nginx stop`
+
+noxu start - `/etc/init.d/noxu start`
+noxu stop - `/etc/init.d/noxu stop`
+
+###mongodb
+run contents of `setup/mongodb/install`
+config file - `/etc/mongodb.conf`
+command line - `mongo`
+start - `/etc/init.d/mogod start`
+stop - `/etc/init.d/mogod stop`

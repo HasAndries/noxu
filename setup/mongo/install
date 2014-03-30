@@ -1,0 +1,14 @@
+sudo apt-get install build-essential libboost-filesystem-dev libboost-program-options-dev libboost-system-dev libboost-thread-dev scons libboost-all-dev python-pymongo git
+git clone https://github.com/skrabban/mongo-nonx86
+cd mongo-nonx86/
+scons
+sudo scons --prefix=/opt/mongo install
+sudo adduser --firstuid 100 --ingroup nogroup --shell /etc/false --disabled-password --gecos "" --no-create-home mongodb
+sudo mkdir /var/log/mongodb/
+sudo chown mongodb:nogroup /var/log/mongodb/
+sudo mkdir /var/lib/mongodb
+sudo chown mongodb:nogroup /var/lib/mongodb
+sudo cp debian/init.d /etc/init.d/mongod
+sudo cp debian/mongodb.conf /etc/
+sudo ln -s /opt/mongo/bin/mongod /usr/bin/mongod
+sudo ln -s /opt/mongo/bin/mongo /usr/bin/mongo
