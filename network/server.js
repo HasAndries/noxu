@@ -1,4 +1,5 @@
 var io = require('socket.io');
+var mysql = require('mysql');
 var Network = require('./network');
 
 function Server(config) {
@@ -6,6 +7,9 @@ function Server(config) {
   _this.config = config;
   this.network = null;
   this.app = null;
+
+  //Database
+  var pool = mysql.createPool(config.networkDb);
 
   //Network
   var network = new Network(config);

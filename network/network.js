@@ -2,6 +2,7 @@ var extend = require('node.extend');
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 var Fiber = require('fibers');
+var mysql = require('mysql');
 var Message = require('./message');
 var instructions = require('./instructions');
 try {
@@ -59,7 +60,7 @@ catch (ex) {
  * @constructor
  * @param {object} config - The RF config to use
  */
-function Network(config) {
+function Network(config, mysql) {
   EventEmitter.call(this);
   this.clients = [];
   this.config = {
@@ -77,6 +78,10 @@ function Network(config) {
   extend(this.config, config || {});
   this._nextNetworkId = 1;
   this.reservations = [];
+
+  MongoClient.connect(config.networkDb, function(err, db){
+    this._loadClients(db);
+  }.bind(this));
 
   //setup rf device
   if (RF24) {
@@ -169,6 +174,9 @@ Network.prototype._stopListen = function () {
   if (!this.listening) return;
   this.radio.stopListening();
   this.listening = false;
+};
+Network.prototype._loadClients = function(db){
+
 };
 //==================== Inbound ====================
 

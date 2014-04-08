@@ -76,6 +76,13 @@ nginx stop - `/etc/init.d/nginx stop`
 noxu start - `/etc/init.d/noxu start`
 noxu stop - `/etc/init.d/noxu stop`
 
+###hostname connectivity
+`sudo pico /etc/hostname`
+enter hostname e.g. `piCommander`
+`sudo pico /etc/nsswitch.conf`
+change `hosts: files dns` -> `hosts: files wins dns`
+`sudo apt-get install samba winbind`
+
 ###mongodb
 run contents of `setup/mongodb/install`
 config file - `/etc/mongodb.conf`

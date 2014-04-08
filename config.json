@@ -4,7 +4,12 @@
     "webSocketPort": "9410",
     "networkPort": "9440",
     "networkPoll": "10000",
-    "networkUrl": "http://hasandries.com/"
+    "networkUrl": "http://hasandries.com/",
+    "networkDb": {
+      "host": "TheOne",
+      "user": "noxu",
+      "password": "disk"
+    }
   },
   "andries": {
   },
