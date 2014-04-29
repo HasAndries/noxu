@@ -20,7 +20,6 @@ function Message(options) {
   this.deviceId = 0;
   this.transactionId = 0;
   this.instruction = 0;
-  this.control = 0;
   this.fromCommander = true;//control[0]
   this.isRelay = false;//control[1]
   this.sleep = 0;
@@ -33,9 +32,9 @@ function Message(options) {
     this.deviceId = buffer.readUInt16LE(3);
     this.transactionId = buffer.readUInt8(5);
     this.instruction = buffer.readUInt8(6);
-    this.control = buffer.readUInt8(7);
-    this.fromCommander = isBitSet(this.control, 0);
-    this.isRelay = isBitSet(this.control, 1);
+    var control = buffer.readUInt8(7);
+    this.fromCommander = isBitSet(control, 0);
+    this.isRelay = isBitSet(control, 1);
     this.sleep = buffer.readUInt8(8);
     var dataLength = buffer.readUInt8(9);
 
@@ -49,7 +48,6 @@ function Message(options) {
     this.deviceId = options.deviceId || 0;
     this.transactionId = options.transactionId || 0;
     this.instruction = options.instruction || 0;
-    this.control = options.control || 0;
     this.fromCommander = typeof options.fromCommander == 'undefined' && true || options.fromCommander;
     this.isRelay = typeof options.isRelay == 'undefined' && true || options.isRelay;
     this.sleep = options.sleep || 0;
@@ -64,7 +62,7 @@ Message.prototype.validate = function(){
 };
 Message.prototype.toBuffer = function(){
   var dataLength = this.data && this.data.length || 0;
-  var control = this.control;
+  var control = 0;
   control = setBit(control, 0, this.fromCommander);
   control = setBit(control, 1, this.isRelay);
 
@@ -79,7 +77,7 @@ Message.prototype.toBuffer = function(){
   buffer[8] = this.sleep;
   buffer[9] = dataLength;
   if (dataLength)
-    this.data.copy(buffer, 8, 0);
+    this.data.copy(buffer, 10, 0);
   return buffer;
 };
 
