@@ -60,10 +60,11 @@ catch (ex) {
  * @constructor
  * @param {object} config - The RF config to use
  */
-function Network(config, mysql) {
+function Network(config) {
   EventEmitter.call(this);
   this.clients = [];
   this.config = {
+    networkId: 0,
     bufferSize: 32,
     channel: 0x4c,
     dataRate: 0, //RF24.DataRate.kb1000,
@@ -191,77 +192,78 @@ Network.prototype._processInbound = function () {
         this.emit('inbound', {buffer: buffer, message: message});
 
         //process message
-        if (message.instruction == instructions.NETWORKID_REQ) this._processInbound_NETWORKID_REQ(message);
-        else if (message.instruction == instructions.NETWORKID_CONFIRM) this._process_NETWORKID_CONFIRM(message);
-        else if (message.instruction == instructions.PULSE_CONFIRM) this._process_PULSE_CONFIRM(message);
+        if (message.instruction == instructions.NETWORK_CONNECT) this._processInbound_NETWORK_CONNECT(message);
+        else if (message.instruction == instructions.NETWORK_CONFIRM) this._process_NETWORK_CONFIRM(message);
+        else if (message.instruction == instructions.PING_CONFIRM) this._process_PING_CONFIRM(message);
       }
     }
   }
 };
-//---------- NETWORKID_REQ ----------
-Network.prototype._processInbound_NETWORKID_REQ = function (message) {
-  var tempId = message.data.readUInt16LE(0);
+//---------- NETWORK_CONNECT ----------
+Network.prototype._processInbound_NETWORK_CONNECT = function (message) {
+  var hardwareId = message.data.readUInt16LE(0);
   var outbound = new Message({data: message.data, fromCommander: true});
-  if (this._checkReserved(tempId)) {
-    outbound.instruction = instructions.NETWORKID_INVALID;
-    this.emit('reservationInvalid', {tempId: tempId});
+  if (this._checkReserved(hardwareId)) {
+    outbound.instruction = instructions.NETWORK_INVALID;
+    this.emit('reservationInvalid', {hardwareId: hardwareId});
   }
   else {
-    var reservation = this._createReservation(tempId);
-    outbound.networkId = reservation.networkId;
-    outbound.instruction = instructions.NETWORKID_NEW;
+    var reservation = this._createReservation(hardwareId);
+    outbound.networkId = this.config.networkId;
+    outbound.deviceId = reservation.deviceId;
+    outbound.instruction = instructions.NETWORK_NEW;
     this.emit('reservationNew', {reservation: reservation});
   }
   this.send(outbound);
 };
-//---------- NETWORKID_CONFIRM ----------
-Network.prototype._process_NETWORKID_CONFIRM = function (message) {
-  var client = this._confirmReservation(message.networkId);
+//---------- NETWORK_CONFIRM ----------
+Network.prototype._process_NETWORK_CONFIRM = function (message) {
+  var client = this._confirmReservation(message.deviceId);
   if (!client) {
-    var outbound = new Message({data: message.data, fromCommander: true, instruction: instructions.NETWORKID_INVALID});
-    this.emit('reservationInvalid', {networkId: message.networkId});
+    var outbound = new Message({data: message.data, fromCommander: true, instruction: instructions.NETWORK_INVALID});
+    this.emit('reservationInvalid', {networkId: message.networkId, deviceId: message.deviceId});
     this.send(outbound);
   }
   else {
     this.emit('clientNew', {client: client});
   }
 };
-//---------- PULSE_CONFIRM ----------
-Network.prototype._process_PULSE_CONFIRM = function (message) {
-  var client = this._getClient(message.networkId);
-  this.emit('pulseConfirm', {client: client});
+//---------- PING_CONFIRM ----------
+Network.prototype._process_PING_CONFIRM = function (message) {
+  var client = this._getClient(message.deviceId);
+  this.emit('pingConfirm', {client: client});
 };
 //==================== Reservations ====================
-Network.prototype._checkReserved = function (tempId) {
+Network.prototype._checkReserved = function (hardwareId) {
   for (var ct = 0; ct < this.reservations.length; ct++) {
-    if (this.reservations[ct].tempId == tempId) return true;
+    if (this.reservations[ct].hardwareId == hardwareId) return true;
   }
   return false;
 };
-Network.prototype._createReservation = function (tempId) {
-  var reservation = {networkId: this._nextNetworkId++, tempId: tempId};
+Network.prototype._createReservation = function (hardwareId) {
+  var reservation = {networkId: this.config.networkId, deviceId: this._nextNetworkId++, hardwareId: hardwareId};
   this.reservations.push(reservation);
   return reservation;
 };
-Network.prototype._confirmReservation = function (networkId) {
+Network.prototype._confirmReservation = function (deviceId) {
   var reservation;
   for (var ct = 0; ct < this.reservations.length; ct++) {
-    if (this.reservations[ct].networkId == networkId) {
+    if (this.reservations[ct].networkId == this.config.networkId && this.reservations[ct].deviceId == deviceId) {
       reservation = this.reservations.splice(ct, 1)[0];
       break;
     }
   }
   if (!reservation) return null;
   this.clients.push({
-    networkId: reservation.networkId, sequence: 0,
+    networkId: this.config.networkId, deviceId: reservation.deviceId, transactionId: 0,
     inbound: [], outbound: []
   });
   return this.clients[this.clients.length - 1];
 };
 //==================== Clients ====================
-Network.prototype._getClient = function (networkId) {
+Network.prototype._getClient = function (deviceId) {
   for (var ct = 0; ct < this.clients.length; ct++) {
-    if (this.clients[ct].networkId == networkId) {
+    if (this.clients[ct].networkId == this.config.networkId && this.clients[ct].deviceId == deviceId) {
       return this.clients[ct];
     }
   }
@@ -269,23 +271,23 @@ Network.prototype._getClient = function (networkId) {
 };
 //==================== Messages ====================
 Network.prototype._stampOutbound = function (message) {
-  var client = this._getClient(message.networkId);
+  var client = this._getClient(message.deviceId);
   if (!client) return;
   if (!client.outbound)
     client.outbound = [];
-  message.sequence = client.sequence++;
-  client.outbound.push({sequence: message.sequence, time: process.hrtime(), message: message});
+  message.transactionId = client.transactionId++;
+  client.outbound.push({transactionId: message.transactionId, time: process.hrtime(), message: message});
 };
 Network.prototype._stampInbound = function (message, time) {
-  var client = this._getClient(message.networkId);
+  var client = this._getClient(message.deviceId);
   if (!client) return;
   if (!client.inbound)
     client.inbound = [];
-  var inbound = {sequence: message.sequence, time: time, message: message};
+  var inbound = {transactionId: message.transactionId, time: time, message: message};
   //calc ping
   if (client.outbound) {
     for (var ct = 0; ct < client.outbound.length; ct++) {
-      if (client.outbound[ct].sequence == message.sequence) {
+      if (client.outbound[ct].transactionId == message.transactionId) {
         var diff = process.hrtime(inbound.time);
         inbound.ping = diff[0] * 1e9 + diff[1];
       }

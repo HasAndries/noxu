@@ -49,7 +49,7 @@ function Message(options) {
     this.transactionId = options.transactionId || 0;
     this.instruction = options.instruction || 0;
     this.fromCommander = typeof options.fromCommander == 'undefined' && true || options.fromCommander;
-    this.isRelay = typeof options.isRelay == 'undefined' && true || options.isRelay;
+    this.isRelay = typeof options.isRelay == 'undefined' && false || options.isRelay;
     this.sleep = options.sleep || 0;
 
     if (options.data instanceof Buffer) this.data = options.data;
@@ -58,7 +58,7 @@ function Message(options) {
   }
 }
 Message.prototype.validate = function(){
-  return this.data.length + 7 < this.bufferSize && Instructions.byVal(this.instruction) != null;
+  return this.data.length + 9 < this.bufferSize && Instructions.byVal(this.instruction) != null;
 };
 Message.prototype.toBuffer = function(){
   var dataLength = this.data && this.data.length || 0;
