@@ -79,10 +79,6 @@ function Network(config, mysql) {
   this._nextNetworkId = 1;
   this.reservations = [];
 
-  MongoClient.connect(config.networkDb, function(err, db){
-    this._loadClients(db);
-  }.bind(this));
-
   //setup rf device
   if (RF24) {
     var radio = new RF24(config.spiDev, config.pinCe);
@@ -184,7 +180,7 @@ Network.prototype._processInbound = function () {
   if (this.listening) {
     var avail = this.radio.available();
     if (avail.any) {
-      var time = process.hrtime()
+      var time = process.hrtime();
       var data = this.radio.read();
       var buffer = new Buffer(this.config.bufferSize);
       buffer.fill(0);
