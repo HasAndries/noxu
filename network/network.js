@@ -100,6 +100,7 @@ function Network(config) {
   }
 }
 util.inherits(Network, EventEmitter);
+Network.prototype._process = [];//for inbound processing functions
 
 //========== PUBLIC ==========
 /**
@@ -175,8 +176,13 @@ Network.prototype._stopListen = function () {
 Network.prototype._loadClients = function(db){
 
 };
+Network. prototype._getNextMessage = function(client){
+  var outbound;
+  //todo: use latest message from admin app
+  if (!outbound) outbound = new Message({networkId: client.networkId, deviceId: client.deviceId, fromCommander: true, instruction: instructions.WAKE, sleep: 10});
+  return outbound
+};
 //==================== Inbound ====================
-
 Network.prototype._processInbound = function () {
   if (this.listening) {
     var avail = this.radio.available();
@@ -190,25 +196,24 @@ Network.prototype._processInbound = function () {
       if (message.validate()) {
         this._stampInbound(message, time);
         this.emit('inbound', {buffer: buffer, message: message});
-
-        //process message
-        if (message.instruction == instructions.NETWORK_CONNECT) this._processInbound_NETWORK_CONNECT(message);
-        else if (message.instruction == instructions.NETWORK_CONFIRM) this._process_NETWORK_CONFIRM(message);
-        else if (message.instruction == instructions.PING_CONFIRM) this._process_PING_CONFIRM(message);
+        this._process[message.instruction].bind(this)(message);
       }
     }
   }
 };
 //---------- NETWORK_CONNECT ----------
-Network.prototype._processInbound_NETWORK_CONNECT = function (message) {
+Network.prototype._process[instructions.NETWORK_CONNECT] = function(message){
   var hardwareId = message.data.readUInt16LE(0);
   var outbound = new Message({data: message.data, fromCommander: true});
-  if (this._checkReserved(hardwareId)) {
+  var reservation = this._getReservation(hardwareId);
+  if (reservation) {
     outbound.instruction = instructions.NETWORK_INVALID;
-    this.emit('reservationInvalid', {hardwareId: hardwareId});
+    outbound.networkId = this.config.networkId;
+    outbound.deviceId = reservation.deviceId;
+    outbound.instruction = instructions.NETWORK_NEW;
   }
   else {
-    var reservation = this._createReservation(hardwareId);
+    reservation = this._createReservation(hardwareId);
     outbound.networkId = this.config.networkId;
     outbound.deviceId = reservation.deviceId;
     outbound.instruction = instructions.NETWORK_NEW;
@@ -217,28 +222,30 @@ Network.prototype._processInbound_NETWORK_CONNECT = function (message) {
   this.send(outbound);
 };
 //---------- NETWORK_CONFIRM ----------
-Network.prototype._process_NETWORK_CONFIRM = function (message) {
+Network.prototype._process[instructions.NETWORK_CONFIRM] = function(message){
   var client = this._confirmReservation(message.deviceId);
+  var outbound;
   if (!client) {
-    var outbound = new Message({data: message.data, fromCommander: true, instruction: instructions.NETWORK_INVALID});
+    outbound = new Message({data: message.data, fromCommander: true, instruction: instructions.NETWORK_INVALID});
     this.emit('reservationInvalid', {networkId: message.networkId, deviceId: message.deviceId});
-    this.send(outbound);
   }
   else {
     this.emit('clientNew', {client: client});
+    outbound = this._getNextMessage(client);
   }
+  this.send(outbound);
 };
 //---------- PING_CONFIRM ----------
-Network.prototype._process_PING_CONFIRM = function (message) {
+Network.prototype._process[instructions.PING_CONFIRM] = function(message){
   var client = this._getClient(message.deviceId);
   this.emit('pingConfirm', {client: client});
 };
 //==================== Reservations ====================
-Network.prototype._checkReserved = function (hardwareId) {
+Network.prototype._getReservation = function (hardwareId) {
   for (var ct = 0; ct < this.reservations.length; ct++) {
-    if (this.reservations[ct].hardwareId == hardwareId) return true;
+    if (this.reservations[ct].hardwareId == hardwareId) return this.reservations[ct];
   }
-  return false;
+  return null;
 };
 Network.prototype._createReservation = function (hardwareId) {
   var reservation = {networkId: this.config.networkId, deviceId: this._nextNetworkId++, hardwareId: hardwareId};
@@ -255,8 +262,8 @@ Network.prototype._confirmReservation = function (deviceId) {
   }
   if (!reservation) return null;
   this.clients.push({
-    networkId: this.config.networkId, deviceId: reservation.deviceId, transactionId: 0,
-    inbound: [], outbound: []
+    networkId: this.config.networkId, deviceId: reservation.deviceId, hardwareId: reservation.hardwareId,
+    transactionId: 0, inbound: [], outbound: []
   });
   return this.clients[this.clients.length - 1];
 };

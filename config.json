@@ -5,6 +5,7 @@
     "networkPort": "9440",
     "networkPoll": "10000",
     "networkUrl": "http://hasandries.com/",
+    "networkId": 559,
     "networkDb": {
       "host": "TheOne",
       "user": "noxu",
