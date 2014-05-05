@@ -88,7 +88,10 @@ describe('Network', function () {
 
         expect(network.reservations.length).toEqual(0);
         expect(network.clients.length).toEqual(1);
-        expect(network.clients[0]).toEqual({networkId: 99, deviceId: 1, hardwareId: reservation.hardwareId, transactionId: 0, inbound: [], outbound: []});
+        expect(network.clients[0].networkId).toEqual(99);
+        expect(network.clients[0].deviceId).toEqual(1);
+        expect(network.clients[0].hardwareId).toEqual(reservation.hardwareId);
+        expect(network.clients[0].transactionId).toEqual(1);
       });
       it('should raise event [reservationInvalid] and send [NETWORK_INVALID] for an invalid reservation', function (done) {
         //event
@@ -107,7 +110,7 @@ describe('Network', function () {
         expect(network.radio.lastMessage.networkId).toEqual(0);
         expect(network.radio.lastMessage.data.toJSON()).toEqual([]);
       });
-      it('should send [WAKE] for a new valid [NETWORK_CONFIRM', function () {
+      it('should send default [WAKE] for a new valid [NETWORK_CONFIRM]', function () {
         //setup
         var reservation = createReservation(network);
 
@@ -115,7 +118,12 @@ describe('Network', function () {
 
         expect(network.reservations.length).toEqual(0);
         expect(network.clients.length).toEqual(1);
-        expect(network.clients[0]).toEqual({networkId: 99, deviceId: 1, hardwareId: reservation.hardwareId, transactionId: 0, inbound: [], outbound: []});
+        expect(network.clients[0].networkId).toEqual(99);
+        expect(network.clients[0].deviceId).toEqual(1);
+        expect(network.clients[0].hardwareId).toEqual(reservation.hardwareId);
+        expect(network.clients[0].transactionId).toEqual(1);
+        expect(network.clients[0].inbound).toEqual([]);
+        expect(network.clients[0].outbound).toEqual([]);
 
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
         expect(network.radio.lastMessage.fromCommander).toEqual(true);
