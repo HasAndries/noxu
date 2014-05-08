@@ -135,9 +135,11 @@ Network.prototype.send = function (obj) {
   if (this.running) this._stopListen();
   //write messages
   for (var ct in list) {
+    var client = this._getClient(list[ct].deviceId);
+    this._incrementTransactionId(client, list[ct]);
     var buffer = list[ct].toBuffer();
     if (this.radio) {
-      this._stampOutbound(list[ct]);
+      this._stampOutbound(client, list[ct]);
       this.radio.write(buffer);
     }
     this.emit('outbound', {buffer: buffer, message: list[ct]});
@@ -179,7 +181,7 @@ Network.prototype._loadClients = function(db){
 Network. prototype._getNextMessage = function(client){
   var outbound;
   //todo: use latest message from admin app
-  if (!outbound) outbound = new Message({networkId: client.networkId, deviceId: client.deviceId, fromCommander: true, instruction: instructions.WAKE, sleep: 10});
+  if (!outbound) outbound = new Message({networkId: client.networkId, deviceId: client.deviceId, instruction: instructions.WAKE, sleep: 10});
   return outbound
 };
 //==================== Inbound ====================
@@ -277,12 +279,14 @@ Network.prototype._getClient = function (deviceId) {
   return null;
 };
 //==================== Messages ====================
-Network.prototype._stampOutbound = function (message) {
-  var client = this._getClient(message.deviceId);
-  if (!client) return;
+Network.prototype._incrementTransactionId = function (client, message) {
+  if (!client || !message) return;
+  message.transactionId = client.transactionId++;
+};
+Network.prototype._stampOutbound = function (client, message) {
+  if (!client || !message) return;
   if (!client.outbound)
     client.outbound = [];
-  message.transactionId = client.transactionId++;
   client.outbound.push({transactionId: message.transactionId, time: process.hrtime(), message: message});
 };
 Network.prototype._stampInbound = function (message, time) {

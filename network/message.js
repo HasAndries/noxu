@@ -40,16 +40,18 @@ function Message(options) {
 
     var dataStart = 10;
     if (dataLength + 9 > this.bufferSize) throw new Error('CommandMessage cannot have more content than BufferSize');
-    this.data = new Buffer(dataLength);
-    buffer.copy(this.data, 0, dataStart, dataStart + dataLength);
+    if (dataLength) {
+      this.data = new Buffer(dataLength);
+      buffer.copy(this.data, 0, dataStart, dataStart + dataLength);
+    }
   }
   else if(options) {
     this.networkId = options.networkId || 0;
     this.deviceId = options.deviceId || 0;
     this.transactionId = options.transactionId || 0;
     this.instruction = options.instruction || 0;
-    this.fromCommander = typeof options.fromCommander == 'undefined' && true || options.fromCommander;
-    this.isRelay = typeof options.isRelay == 'undefined' && false || options.isRelay;
+    this.fromCommander = typeof options.fromCommander == 'undefined' ? true : options.fromCommander;
+    this.isRelay = typeof options.isRelay == 'undefined' ? false : options.isRelay;
     this.sleep = options.sleep || 0;
 
     if (options.data instanceof Buffer) this.data = options.data;
@@ -58,7 +60,8 @@ function Message(options) {
   }
 }
 Message.prototype.validate = function(){
-  return this.data.length + 9 < this.bufferSize && Instructions.byVal(this.instruction) != null;
+  var dataValid = this.data && this.data.length + 9 < this.bufferSize || this.data == null;
+  return dataValid && Instructions.byVal(this.instruction) != null;
 };
 Message.prototype.toBuffer = function(){
   var dataLength = this.data && this.data.length || 0;
