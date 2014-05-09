@@ -198,10 +198,27 @@ Network.prototype._processInbound = function () {
       if (message.validate()) {
         this._stampInbound(message, time);
         this.emit('inbound', {buffer: buffer, message: message});
-        this._process[message.instruction].bind(this)(message);
+        if (this._process[message.instruction])
+          this._process[message.instruction].bind(this)(message);
+        else
+          this._processGeneral.bind(this)(message);
       }
     }
   }
+};
+//---------- processGeneral ----------
+Network.prototype._processGeneral = function(message){
+  var client = this._getClient(message.deviceId);
+  var outbound;
+  if (!client) {
+    outbound = new Message({data: message.data, fromCommander: true, instruction: instructions.NETWORK_INVALID});
+    this.emit('deviceInvalid', {networkId: message.networkId, deviceId: message.deviceId});
+  }
+  else {
+    this.emit('deviceNextMessage', {client: client});
+    outbound = this._getNextMessage(client);
+  }
+  this.send(outbound);
 };
 //---------- NETWORK_CONNECT ----------
 Network.prototype._process[instructions.NETWORK_CONNECT] = function(message){
@@ -240,6 +257,7 @@ Network.prototype._process[instructions.NETWORK_CONFIRM] = function(message){
 //---------- PING_CONFIRM ----------
 Network.prototype._process[instructions.PING_CONFIRM] = function(message){
   var client = this._getClient(message.deviceId);
+  //todo: calculate ping time
   this.emit('pingConfirm', {client: client});
 };
 //==================== Reservations ====================

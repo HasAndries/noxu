@@ -18,6 +18,7 @@ function Server(config) {
   network.on('inbound', this.notify('inbound'));
   network.on('reservationNew', this.notify('reservationNew'));
   network.on('clientNew', this.notify('clientNew'));
+  network.on('pingConfirm', this.notify('pingConfirm'));
 
   //Message Map
   this.messageMap = {
@@ -44,7 +45,7 @@ Server.prototype.notify = function (name, socket) {
   var _this = this;
   return function (obj) {
     (socket || _this.io.sockets).emit(name, obj);
-    console.log('Notify: ' + name);
+    console.log('Notify: %s - %s', name, JSON.stringify(obj));
   }
 }
 Server.prototype.respond = function(socket, key, func){
