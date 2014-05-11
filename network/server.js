@@ -17,12 +17,12 @@ function Server(config) {
   network.on('outbound', this.notify('outbound'));
   network.on('inbound', this.notify('inbound'));
   network.on('reservationNew', this.notify('reservationNew'));
-  network.on('clientNew', this.notify('clientNew'));
+  network.on('deviceNew', this.notify('deviceNew'));
   network.on('pingConfirm', this.notify('pingConfirm'));
 
   //Message Map
   this.messageMap = {
-    'clients': {key: 'clients', func: network.getClients},
+    'devices': {key: 'devices', func: network.getDevices},
     'send': {key: 'send', func: network.send}
   };
 

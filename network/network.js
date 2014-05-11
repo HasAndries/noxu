@@ -32,20 +32,33 @@ catch (ex) {
 /**
  * @event Network#reservationInvalid
  * @type {object}
- * @property {int} tempId - The TempId that is invalid
  * @property {int} networkId - The NetworkId that is invalid
+ * @property {int} deviceId - The DeviceId that is invalid
+ * @property {int} hardwareId - The hardwareId that is invalid
  */
 /**
- * @event Network#clientNew
+ * @event Network#deviceNew
  * @type {object}
- * @property {object} client - Client added
+ * @property {object} device - Device added
  */
 /**
- * @event Network#pulseConfirm
+ * @event Network#deviceInvalid
  * @type {object}
- * @property {object} client - Client that sent message
+ * @property {int} networkId - The NetworkId that is invalid
+ * @property {int} deviceId - The DeviceId that is invalid
  */
-
+/**
+ * @event Network#pingConfirm
+ * @type {object}
+ * @property {object} device - Device that sent message
+ * @property {object} latency - Latency of the device
+ */
+/**
+ * @event Network#deviceNextMessage
+ * @type {object}
+ * @property {object} device - Device that the message is for
+ * @property {object} message - Next message that is to be sent to the device
+ */
 
 /**
  * @class
@@ -54,15 +67,17 @@ catch (ex) {
  * @fires Network#inbound
  * @fires Network#reservationNew
  * @fires Network#reservationInvalid
- * @fires Network#clientNew
- * @fires Network#pulseConfirm
+ * @fires Network#deviceInvalid
+ * @fires Network#deviceNew
+ * @fires Network#pingConfirm
+ * @fires Network#deviceNextMessage
  *
  * @constructor
  * @param {object} config - The RF config to use
  */
 function Network(config) {
   EventEmitter.call(this);
-  this.clients = [];
+  this.devices = [];
   this.config = {
     networkId: 0,
     bufferSize: 32,
@@ -135,11 +150,11 @@ Network.prototype.send = function (obj) {
   if (this.running) this._stopListen();
   //write messages
   for (var ct in list) {
-    var client = this._getClient(list[ct].deviceId);
-    this._incrementTransactionId(client, list[ct]);
+    var device = this._getDevice(list[ct].deviceId);
+    this._incrementTransactionId(device, list[ct]);
     var buffer = list[ct].toBuffer();
     if (this.radio) {
-      this._stampOutbound(client, list[ct]);
+      this._stampOutbound(device, list[ct]);
       this.radio.write(buffer);
     }
     this.emit('outbound', {buffer: buffer, message: list[ct]});
@@ -149,11 +164,11 @@ Network.prototype.send = function (obj) {
 };
 
 /**
- * Returns a list of currently connected network clients
- * @returns {object} List of client objects
+ * Returns a list of currently connected network devices
+ * @returns {object} List of device objects
  */
-Network.prototype.getClients = function () {
-  return extend([], this.clients);
+Network.prototype.getDevices = function () {
+  return extend([], this.devices);
 };
 //========== PRIVATE ==========
 Network.prototype._loop = function (_this) {
@@ -175,14 +190,15 @@ Network.prototype._stopListen = function () {
   this.radio.stopListening();
   this.listening = false;
 };
-Network.prototype._loadClients = function(db){
+Network.prototype._loadDevices = function(db){
 
 };
-Network. prototype._getNextMessage = function(client){
+Network. prototype._getNextMessage = function(device){
   var outbound;
   //todo: use latest message from admin app
-  if (!outbound) outbound = new Message({networkId: client.networkId, deviceId: client.deviceId, instruction: instructions.WAKE, sleep: 10});
-  return outbound
+  if (!outbound) outbound = new Message({networkId: device.networkId, deviceId: device.deviceId, instruction: instructions.WAKE, sleep: 10});
+  this.emit('deviceNextMessage', {device: device, message: outbound});
+  return outbound;
 };
 //==================== Inbound ====================
 Network.prototype._processInbound = function () {
@@ -198,67 +214,64 @@ Network.prototype._processInbound = function () {
       if (message.validate()) {
         this._stampInbound(message, time);
         this.emit('inbound', {buffer: buffer, message: message});
-        if (this._process[message.instruction])
-          this._process[message.instruction].bind(this)(message);
-        else
-          this._processGeneral.bind(this)(message);
+        var outbound = this._process[message.instruction] && this._process[message.instruction].bind(this)(message) || this._processGeneral.bind(this)(message);
+        if (outbound) this.send(outbound);
       }
     }
   }
 };
 //---------- processGeneral ----------
 Network.prototype._processGeneral = function(message){
-  var client = this._getClient(message.deviceId);
+  var device = this._getDevice(message.deviceId);
   var outbound;
-  if (!client) {
-    outbound = new Message({data: message.data, fromCommander: true, instruction: instructions.NETWORK_INVALID});
+  if (!device) {
+    outbound = new Message({networkId: this.config.networkId, deviceId: message.deviceId, data: message.data, fromCommander: true, instruction: instructions.NETWORK_INVALID});
     this.emit('deviceInvalid', {networkId: message.networkId, deviceId: message.deviceId});
   }
-  else {
-    this.emit('deviceNextMessage', {client: client});
-    outbound = this._getNextMessage(client);
+  else{
+    outbound = message.isRelay && this._getNextMessage(device) || new Message({networkId: this.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: instructions.PING});
   }
-  this.send(outbound);
+  return outbound;
 };
 //---------- NETWORK_CONNECT ----------
 Network.prototype._process[instructions.NETWORK_CONNECT] = function(message){
   var hardwareId = message.data.readUInt16LE(0);
-  var outbound = new Message({data: message.data, fromCommander: true});
+  var outbound = new Message({data: message.data, fromCommander: true, networkId: this.config.networkId, instruction: instructions.NETWORK_NEW});
   var reservation = this._getReservation(hardwareId);
   if (reservation) {
-    outbound.instruction = instructions.NETWORK_INVALID;
-    outbound.networkId = this.config.networkId;
     outbound.deviceId = reservation.deviceId;
-    outbound.instruction = instructions.NETWORK_NEW;
   }
   else {
     reservation = this._createReservation(hardwareId);
-    outbound.networkId = this.config.networkId;
     outbound.deviceId = reservation.deviceId;
-    outbound.instruction = instructions.NETWORK_NEW;
     this.emit('reservationNew', {reservation: reservation});
   }
-  this.send(outbound);
+  return outbound;
 };
 //---------- NETWORK_CONFIRM ----------
 Network.prototype._process[instructions.NETWORK_CONFIRM] = function(message){
-  var client = this._confirmReservation(message.deviceId);
+  var device = this._confirmReservation(message.deviceId);
   var outbound;
-  if (!client) {
+  if (!device) {
     outbound = new Message({data: message.data, fromCommander: true, instruction: instructions.NETWORK_INVALID});
     this.emit('reservationInvalid', {networkId: message.networkId, deviceId: message.deviceId});
   }
   else {
-    this.emit('clientNew', {client: client});
-    outbound = this._getNextMessage(client);
+    this.emit('deviceNew', {device: device});
+    outbound = message.isRelay && this._getNextMessage(device) || new Message({networkId: this.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: instructions.PING});
   }
-  this.send(outbound);
+  return outbound;
 };
 //---------- PING_CONFIRM ----------
 Network.prototype._process[instructions.PING_CONFIRM] = function(message){
-  var client = this._getClient(message.deviceId);
+  var device = this._getDevice(message.deviceId);
+  if (!message.isRelay) {
+    var outbound = this._getNextMessage(device);
+    this.send(outbound);
+  }
   //todo: calculate ping time
-  this.emit('pingConfirm', {client: client});
+  this.emit('pingConfirm', {device: device});
+  return outbound;
 };
 //==================== Reservations ====================
 Network.prototype._getReservation = function (hardwareId) {
@@ -281,48 +294,48 @@ Network.prototype._confirmReservation = function (deviceId) {
     }
   }
   if (!reservation) return null;
-  this.clients.push({
+  this.devices.push({
     networkId: this.config.networkId, deviceId: reservation.deviceId, hardwareId: reservation.hardwareId,
-    transactionId: 0, inbound: [], outbound: []
+    nextTransactionId: 0, inbound: [], outbound: []
   });
-  return this.clients[this.clients.length - 1];
+  return this.devices[this.devices.length - 1];
 };
-//==================== Clients ====================
-Network.prototype._getClient = function (deviceId) {
-  for (var ct = 0; ct < this.clients.length; ct++) {
-    if (this.clients[ct].networkId == this.config.networkId && this.clients[ct].deviceId == deviceId) {
-      return this.clients[ct];
+//==================== Devices ====================
+Network.prototype._getDevice = function (deviceId) {
+  for (var ct = 0; ct < this.devices.length; ct++) {
+    if (this.devices[ct].networkId == this.config.networkId && this.devices[ct].deviceId == deviceId) {
+      return this.devices[ct];
     }
   }
   return null;
 };
-//==================== Messages ====================
-Network.prototype._incrementTransactionId = function (client, message) {
-  if (!client || !message) return;
-  message.transactionId = client.transactionId++;
+//==================== Transactions ====================
+Network.prototype._incrementTransactionId = function (device, message) {
+  if (!device || !message) return;
+  message.transactionId = device.nextTransactionId++;
 };
-Network.prototype._stampOutbound = function (client, message) {
-  if (!client || !message) return;
-  if (!client.outbound)
-    client.outbound = [];
-  client.outbound.push({transactionId: message.transactionId, time: process.hrtime(), message: message});
+Network.prototype._stampOutbound = function (device, message) {
+  if (!device || !message) return;
+  if (!device.outbound)
+    device.outbound = [];
+  device.outbound.push({transactionId: message.transactionId, time: process.hrtime(), message: message});
 };
 Network.prototype._stampInbound = function (message, time) {
-  var client = this._getClient(message.deviceId);
-  if (!client) return;
-  if (!client.inbound)
-    client.inbound = [];
+  var device = this._getDevice(message.deviceId);
+  if (!device) return;
+  if (!device.inbound)
+    device.inbound = [];
   var inbound = {transactionId: message.transactionId, time: time, message: message};
   //calc ping
-  if (client.outbound) {
-    for (var ct = 0; ct < client.outbound.length; ct++) {
-      if (client.outbound[ct].transactionId == message.transactionId) {
-        var diff = process.hrtime(inbound.time);
+  if (device.outbound) {
+    for (var ct = 0; ct < device.outbound.length; ct++) {
+      if (device.outbound[ct].transactionId == message.transactionId) {
+        var diff = process.hrtime(device.outbound[ct].time);
         inbound.ping = diff[0] * 1e9 + diff[1];
       }
     }
   }
-  client.inbound.push(inbound);
+  device.inbound.push(inbound);
 };
 
 //==================== Tools ====================

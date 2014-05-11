@@ -29,7 +29,7 @@ describe('Network', function () {
     var message = new Message({instruction: Instructions.NETWORK_CONFIRM, networkId: networkId || network.config.networkId, deviceId: deviceId, data: []});
     network.radio.queue(message.toBuffer());
     network._processInbound();
-    return network.clients[network.clients.length - 1];
+    return network.devices[network.devices.length - 1];
   };
   //========== Inbound ==========
   describe('Inbound', function () {
@@ -73,25 +73,26 @@ describe('Network', function () {
       });
     });
     describe('[NETWORK_CONFIRM]', function () {
-      it('should raise event [clientNew], remove reservation and add a new Client', function (done) {
+      it('should raise event [deviceNew], remove reservation and add a new Device', function (done) {
         //setup
         var reservation = createReservation(network);
 
         //event
-        network.on('clientNew', function (input) {
-          expect(input.client.networkId).toEqual(99);
-          expect(input.client.deviceId).toEqual(1);
+        network.on('deviceNew', function (input) {
+          expect(input.device.networkId).toEqual(99);
+          expect(input.device.deviceId).toEqual(1);
           done();
         });
 
         confirmReservation(network, reservation.deviceId);
 
         expect(network.reservations.length).toEqual(0);
-        expect(network.clients.length).toEqual(1);
-        expect(network.clients[0].networkId).toEqual(99);
-        expect(network.clients[0].deviceId).toEqual(1);
-        expect(network.clients[0].hardwareId).toEqual(reservation.hardwareId);
-        expect(network.clients[0].transactionId).toEqual(1);
+        expect(network.devices.length).toEqual(1);
+        expect(network.devices[0].networkId).toEqual(99);
+        expect(network.devices[0].deviceId).toEqual(1);
+        expect(network.devices[0].hardwareId).toEqual(reservation.hardwareId);
+        expect(network.devices[0].nextTransactionId).toEqual(1);
+        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.PING);
       });
       it('should raise event [reservationInvalid] and send [NETWORK_INVALID] for an invalid reservation', function (done) {
         //event
@@ -103,29 +104,50 @@ describe('Network', function () {
         confirmReservation(network, 1);
 
         expect(network.reservations.length).toEqual(0);
-        expect(network.clients.length).toEqual(0);
+        expect(network.devices.length).toEqual(0);
 
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.NETWORK_INVALID);
         expect(network.radio.lastMessage.fromCommander).toEqual(true);
         expect(network.radio.lastMessage.networkId).toEqual(0);
         expect(network.radio.lastMessage.data).toEqual(null);
       });
-      it('should send default [WAKE] for a new valid [NETWORK_CONFIRM]', function () {
+      it('should send [PING] for a new valid [NETWORK_CONFIRM]', function () {
         //setup
         var reservation = createReservation(network);
         confirmReservation(network, reservation.deviceId);
 
-        expect(network.clients.length).toEqual(1);
-        expect(network.clients[0].networkId).toEqual(99);
-        expect(network.clients[0].deviceId).toEqual(1);
-        expect(network.clients[0].hardwareId).toEqual(reservation.hardwareId);
-        expect(network.clients[0].transactionId).toEqual(1);
-        var clientOutbound = network.clients[0].outbound[network.clients[0].outbound.length-1];
-        expect(clientOutbound.message).toEqual(network.radio.lastMessage);
+        expect(network.devices.length).toEqual(1);
+        expect(network.devices[0].networkId).toEqual(99);
+        expect(network.devices[0].deviceId).toEqual(1);
+        expect(network.devices[0].hardwareId).toEqual(reservation.hardwareId);
+        expect(network.devices[0].nextTransactionId).toEqual(1);
+
+        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.PING);
+        expect(network.devices[0].outbound[0].message).toEqual(network.radio.lastMessage);
+
+        expect(network.radio.lastMessage.instruction).toEqual(Instructions.PING);
+        expect(network.radio.lastMessage.networkId).toEqual(network.devices[0].networkId);
+        expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
+      });
+      it('should send [WAKE] for a new valid [NETWORK_CONFIRM] that is Relayed', function () {
+        //setup
+        var reservation = createReservation(network);
+        var message = new Message({instruction: Instructions.NETWORK_CONFIRM, networkId: network.config.networkId, deviceId: reservation.deviceId, isRelay: true});
+        network.radio.queue(message.toBuffer());
+        network._processInbound();
+
+        expect(network.devices.length).toEqual(1);
+        expect(network.devices[0].networkId).toEqual(99);
+        expect(network.devices[0].deviceId).toEqual(1);
+        expect(network.devices[0].hardwareId).toEqual(reservation.hardwareId);
+        expect(network.devices[0].nextTransactionId).toEqual(1);
+
+        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.WAKE);
+        expect(network.devices[0].outbound[0].message).toEqual(network.radio.lastMessage);
 
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
-        expect(network.radio.lastMessage.networkId).toEqual(network.clients[0].networkId);
-        expect(network.radio.lastMessage.deviceId).toEqual(network.clients[0].deviceId);
+        expect(network.radio.lastMessage.networkId).toEqual(network.devices[0].networkId);
+        expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
         expect(network.radio.lastMessage.sleep).toEqual(10);
       });
     });
@@ -137,12 +159,13 @@ describe('Network', function () {
 
         //event
         network.on('pingConfirm', function (input) {
-          expect(input.client.networkId).toEqual(99);
-          expect(input.client.deviceId).toEqual(1);
+          expect(input.device.networkId).toEqual(99);
+          expect(input.device.deviceId).toEqual(1);
           done();
         });
 
         //send outbound ping
+        expect(network.devices[0].nextTransactionId).toEqual(1);
         var message = new Message({instruction: Instructions.PING, networkId: 99, deviceId: 1});
         network.send(message);
 
@@ -151,25 +174,104 @@ describe('Network', function () {
         network.radio.queue(message.toBuffer());
         network._processInbound();
 
-        expect(network.clients.length).toEqual(1);
-        expect(network.clients[0].networkId).toEqual(99);
-        expect(network.clients[0].deviceId).toEqual(1);
-        expect(network.clients[0].hardwareId).toEqual(reservation.hardwareId);
-        expect(network.clients[0].transactionId).toEqual(2);
-        expect(network.clients[0].inbound.length).toEqual(1);
+        expect(network.devices.length).toEqual(1);
+        expect(network.devices[0].networkId).toEqual(99);
+        expect(network.devices[0].deviceId).toEqual(1);
+        expect(network.devices[0].hardwareId).toEqual(reservation.hardwareId);
+        expect(network.devices[0].nextTransactionId).toEqual(4);
 
-        var clientInbound = network.clients[0].inbound[network.clients[0].inbound.length-1];
-        expect(clientInbound.message).toEqual(message);
+        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.PING);
+        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.WAKE);
+        expect(network.devices[0].inbound.length).toEqual(1);
 
-        expect(clientInbound.message.instruction).toEqual(Instructions.PING_CONFIRM);
-        expect(clientInbound.message.networkId).toEqual(network.clients[0].networkId);
-        expect(clientInbound.message.deviceId).toEqual(network.clients[0].deviceId);
+        var deviceInbound = network.devices[0].inbound[network.devices[0].inbound.length-1];
+        expect(deviceInbound.message).toEqual(message);
+
+        expect(deviceInbound.message.instruction).toEqual(Instructions.PING_CONFIRM);
+        expect(deviceInbound.message.networkId).toEqual(network.devices[0].networkId);
+        expect(deviceInbound.message.deviceId).toEqual(network.devices[0].deviceId);
+      });
+      it('should raise [deviceNextMessage] and send [Next Message] if message is not relay', function(done){
+        //setup
+        var reservation = createReservation(network);
+        confirmReservation(network, reservation.deviceId);
+
+        //event
+        network.on('deviceNextMessage', function (input) {
+          expect(input.device.networkId).toEqual(99);
+          expect(input.device.deviceId).toEqual(1);
+          expect(input.message.instruction).toEqual(Instructions.WAKE);
+          done();
+        });
+
+        //send outbound ping
+        var message = new Message({instruction: Instructions.PING, networkId: 99, deviceId: 1});
+        network.send(message);
+
+        //inbound message
+        var message = new Message({instruction: Instructions.PING_CONFIRM, networkId: 99, deviceId: 1, isRelay: false});
+        network.radio.queue(message.toBuffer());
+        network._processInbound();
+
+        expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
+        expect(network.radio.lastMessage.fromCommander).toEqual(true);
+        expect(network.radio.lastMessage.networkId).toEqual(network.devices[0].networkId);
+        expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
+      });
+    });
+    describe('General', function () {
+      it('should raise event [deviceInvalid] if client does not exist', function (done) {
+        //setup
+        var reservation = createReservation(network);
+        confirmReservation(network, reservation.deviceId);
+
+        //event
+        network.on('deviceInvalid', function (input) {
+          expect(input.networkId).toEqual(299);
+          expect(input.deviceId).toEqual(5);
+          done();
+        });
+
+        //inbound message
+        var message = new Message({instruction: Instructions.WAKE, networkId: 299, deviceId: 5});
+        network.radio.queue(message.toBuffer());
+        network._processInbound();
+      });
+      it('should send [PING] if message is not relay', function(){
+        //setup
+        var reservation = createReservation(network);
+        confirmReservation(network, reservation.deviceId);
+
+        //inbound message
+        var message = new Message({instruction: Instructions.WAKE, networkId: 99, deviceId: 1, isRelay: false});
+        network.radio.queue(message.toBuffer());
+        network._processInbound();
+
+        expect(network.radio.lastMessage.instruction).toEqual(Instructions.PING);
+        expect(network.radio.lastMessage.fromCommander).toEqual(true);
+        expect(network.radio.lastMessage.networkId).toEqual(network.devices[0].networkId);
+        expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
+      });
+      it('should send [Next Message] if message is relay', function(){
+        //setup
+        var reservation = createReservation(network);
+        confirmReservation(network, reservation.deviceId);
+
+        //inbound message
+        var message = new Message({instruction: Instructions.WAKE, networkId: 99, deviceId: 1, isRelay: true});
+        network.radio.queue(message.toBuffer());
+        network._processInbound();
+
+        expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
+        expect(network.radio.lastMessage.fromCommander).toEqual(true);
+        expect(network.radio.lastMessage.networkId).toEqual(network.devices[0].networkId);
+        expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
       });
     });
   });
   //========== send ==========
   describe('send', function () {
-    it('should raise event [outbound], increase the client transactionId and send the message to the radio', function (done) {
+    it('should raise event [outbound], increase the device transactionId and send the message to the radio', function (done) {
       //setup
       var reservation = createReservation(network);
       confirmReservation(network, reservation.deviceId);
@@ -185,29 +287,29 @@ describe('Network', function () {
       network.send(message);
 
       expect(network.radio.lastMessage.toBuffer().toJSON()).toEqual(message.toBuffer().toJSON());
-      var clientOutbound = network.clients[0].outbound[network.clients[0].outbound.length-1];
-      expect(clientOutbound.message.toBuffer().toJSON()).toEqual(network.radio.lastMessage.toBuffer().toJSON());
+      var deviceOutbound = network.devices[0].outbound[network.devices[0].outbound.length-1];
+      expect(deviceOutbound.message.toBuffer().toJSON()).toEqual(network.radio.lastMessage.toBuffer().toJSON());
     });
   });
 
   //========== socket.io ==========
-  //---------- getClients ----------
-  describe('getClients', function () {
-    it('should return list of clients', function () {
+  //---------- getDevices ----------
+  describe('getDevices', function () {
+    it('should return list of devices', function () {
       //setup
       var reservation = createReservation(network);
       confirmReservation(network, reservation.deviceId);
       reservation = createReservation(network);
       confirmReservation(network, reservation.deviceId);
 
-      var clients = network.getClients();
-      expect(clients.length).toEqual(2);
-      expect(clients[1].networkId).toEqual(99);
-      expect(clients[1].deviceId).toEqual(2);
-      expect(clients[1].hardwareId).toEqual(reservation.hardwareId);
-      expect(clients[1].transactionId).toEqual(1);
-      expect(clients[1].inbound.length).toEqual(0);
-      expect(clients[1].outbound.length).toEqual(1);
+      var devices = network.getDevices();
+      expect(devices.length).toEqual(2);
+      expect(devices[1].networkId).toEqual(99);
+      expect(devices[1].deviceId).toEqual(2);
+      expect(devices[1].hardwareId).toEqual(reservation.hardwareId);
+      expect(devices[1].nextTransactionId).toEqual(1);
+      expect(devices[1].inbound.length).toEqual(0);
+      expect(devices[1].outbound.length).toEqual(1);
     });
   });
 });
