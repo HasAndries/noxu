@@ -92,7 +92,7 @@ function Network(config) {
     outboundAddress: 0x00F0F0F0F0
   };
   extend(this.config, config || {});
-  this._nextNetworkId = 1;
+  this._nextDeviceId = 1;
   this.reservations = [];
 
   //setup rf device
@@ -178,20 +178,15 @@ Network.prototype._loop = function (_this) {
     sleep(5);
   }
 };
-
 Network.prototype._startListen = function () {
   if (this.listening) return;
   this.radio.startListening();
   this.listening = true;
 };
-
 Network.prototype._stopListen = function () {
   if (!this.listening) return;
   this.radio.stopListening();
   this.listening = false;
-};
-Network.prototype._loadDevices = function(db){
-
 };
 Network. prototype._getNextMessage = function(device){
   var outbound;
@@ -281,7 +276,7 @@ Network.prototype._getReservation = function (hardwareId) {
   return null;
 };
 Network.prototype._createReservation = function (hardwareId) {
-  var reservation = {networkId: this.config.networkId, deviceId: this._nextNetworkId++, hardwareId: hardwareId};
+  var reservation = {networkId: this.config.networkId, deviceId: this._nextDeviceId++, hardwareId: hardwareId};
   this.reservations.push(reservation);
   return reservation;
 };
@@ -301,6 +296,9 @@ Network.prototype._confirmReservation = function (deviceId) {
   return this.devices[this.devices.length - 1];
 };
 //==================== Devices ====================
+Network.prototype._loadDevices = function(db){
+
+};
 Network.prototype._getDevice = function (deviceId) {
   for (var ct = 0; ct < this.devices.length; ct++) {
     if (this.devices[ct].networkId == this.config.networkId && this.devices[ct].deviceId == deviceId) {

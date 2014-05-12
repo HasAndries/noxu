@@ -1,19 +1,35 @@
 var Help = require('../help');
+var sinon = require('sinon');
 var Network = require('../../network/network');
 var Message = require('../../network/message');
 var Instructions = require('../../network/instructions');
 
 describe('Network', function () {
-  var network;
+  var mockDb, network;
   beforeEach(function () {
+    mockDb = sinon.mock(require('mysql'));
     network = new Network({networkId: 99});
     network.radio = new Help.MockRadio();
     network._startListen();
   });
   afterEach(function () {
     network._stopListen();
+    mockDb.restore();
   });
+  //========== Constructor ==========
+  describe('constructor', function(){
+    it('should load all devices from the datastore', function(){
+      var queryString = '';
+      var queryParams = [];
+      var rows = [];
+      mockDb.expects('query').with(queryString, queryParams).yields(null, rows);
+      mockDb.verify();
 
+      //var network = new Network({networkId: 99});
+
+      //mockDb.verify();
+    });
+  });
   //========== Helpers ==========
   function createReservation(network, _hardwareId) {
     var hardwareId = _hardwareId || Help.random(1, 10000);
@@ -203,7 +219,6 @@ describe('Network', function () {
         network.radio.queue(message.toBuffer());
         network._processInbound();
 
-        console.log(network.devices[0].outbound);
         expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.PING);
         expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.WAKE);
 
@@ -261,6 +276,7 @@ describe('Network', function () {
         expect(network.radio.lastMessage.networkId).toEqual(network.devices[0].networkId);
         expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
       });
+
     });
   });
   //========== send ==========
