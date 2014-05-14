@@ -11,6 +11,7 @@ Device.loadAll = function(db){
   var output = [];
   //console.log(db.config.connectionConfig.database);
   db.query('select * from devices', function(err, rows){
+    console.log(rows);
     if (err) throw err;
     for(var ct=0;ct<rows.count;ct++){
       var device = new Device({deviceId: rows[ct].deviceId, hardwareId: rows[ct].hardwareId, nextTransactionId: rows[ct].nextTransactionId, confirmed: rows[ct].confirmed});

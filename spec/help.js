@@ -58,7 +58,10 @@ MockDb.prototype.query = function(query, params, callback){
   if (list){
     if (!list[query].params || list[query].params == params) {
       list[query].run++;
-      return list[query].callback(params);
+      var output = list[query].callback(params);
+      var err = output.err || null;
+      var rows = output.rows || output;
+      callback(err, rows);
     }
   }
   throw new Error('No query callback for [' + query + ']');

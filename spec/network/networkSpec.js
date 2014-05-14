@@ -39,6 +39,8 @@ describe('Network', function () {
       });
 
       var network = new Network({networkId: 99}, db);
+      console.log('----------------------');
+      console.log(network.devices);
     });
   });
   //========== Helpers ==========
