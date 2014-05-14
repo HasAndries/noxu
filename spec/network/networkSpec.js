@@ -1,15 +1,26 @@
 var Help = require('../help');
-var sinon = require('sinon');
 var mysql = require('mysql')
 var Network = require('../../network/network');
 var Message = require('../../network/message');
 var Instructions = require('../../network/instructions');
 
 describe('Network', function () {
-  var db, mock, network, nextDeviceId;
+  var db, network, nextDeviceId;
   beforeEach(function () {
-    db = mysql.createPool({});
-    mock = sinon.mock(db);
+    db = new Help.MockDb();
+    db.expect('select * from devices', null, function(params){
+      var output = [{deviceId:1}, {deviceId:2}];
+      return output;
+    });
+    db.when('insert into devices set ?', null, function(params){
+      var output = [];
+      output.insertId = nextDeviceId++;
+      return output;
+    });
+    db.when('update devices set ? where deviceId = ?', null, function(params){
+      return [];
+    });
+
     network = new Network({networkId: 99}, db);
     network.radio = new Help.MockRadio();
     network._startListen();
@@ -17,24 +28,21 @@ describe('Network', function () {
   });
   afterEach(function () {
     network._stopListen();
-    mock.restore();
+    db.verify();
   });
   //========== Constructor ==========
   describe('constructor', function(){
     it('should load all devices from the datastore', function(){
-      var queryString = 'select * from devices';
-      var rows = [];
-      mock.expects('query').withArgs(queryString).yields(null, rows);
+      db.expect('select * from devices', null, function(params){
+        var output = [{deviceId:1}, {deviceId:2}];
+        return output;
+      });
 
       var network = new Network({networkId: 99}, db);
-
-      mock.verify();
     });
   });
   //========== Helpers ==========
   function NETWORK_CONNECT(network, _hardwareId) {
-    mock.expects('query').withArgs('insert into devices set ?').atLeast(0).yields(null, {insertId: nextDeviceId++});
-
     var hardwareId = _hardwareId || Help.random(1, 10000);
     var buffer = new Buffer(2);
     buffer.writeUInt16LE(hardwareId, 0);

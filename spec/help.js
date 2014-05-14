@@ -42,4 +42,36 @@ MockRadio.prototype.queue = function(buffer){
 Help.MockRadio = MockRadio;
 
 
+//========== MockDb ==========
+function MockDb(){
+  this.whenList = {};
+  this.expectList = {};
+}
+MockDb.prototype.when = function(query, params, callback){
+  this.whenList[query] = {params: params, callback: callback, run:0};
+};
+MockDb.prototype.expect = function(query, params, callback){
+  this.expectList[query] = {params: params, callback: callback, run:0};
+};
+MockDb.prototype.query = function(query, params, callback){
+  var list = this.expectList[query] && this.expectList || this.whenList[query] && this.whenList || null;
+  if (list){
+    if (!list[query].params || list[query].params == params) {
+      list[query].run++;
+      return list[query].callback(params);
+    }
+  }
+  throw new Error('No query callback for [' + query + ']');
+};
+MockDb.prototype.verify = function(string, params, callback){
+  var errors = [];
+  for(var key in this.expectList){
+    if (!this.expectList[key].run) errors.push(key);
+  }
+  if (errors.length){
+    throw new Error('Expected queries not run:\r\n'+errors.join('\r\n'));
+  }
+};
+Help.MockDb = MockDb;
+
 module.exports = Help;
