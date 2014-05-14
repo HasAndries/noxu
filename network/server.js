@@ -9,10 +9,10 @@ function Server(config) {
   this.app = null;
 
   //Database
-  var pool = mysql.createPool(config.networkDb);
+  var db = mysql.createPool(config.networkDb);
 
   //Network
-  var network = new Network(config);
+  var network = new Network(config, db);
   this.network = network;
   network.on('outbound', this.notify('outbound'));
   network.on('inbound', this.notify('inbound'));

@@ -2,7 +2,7 @@ var extend = require('node.extend');
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 var Fiber = require('fibers');
-var mysql = require('mysql');
+var Device = require('./device');
 var Message = require('./message');
 var instructions = require('./instructions');
 try {
@@ -32,7 +32,6 @@ catch (ex) {
 /**
  * @event Network#reservationInvalid
  * @type {object}
- * @property {int} networkId - The NetworkId that is invalid
  * @property {int} deviceId - The DeviceId that is invalid
  * @property {int} hardwareId - The hardwareId that is invalid
  */
@@ -44,7 +43,6 @@ catch (ex) {
 /**
  * @event Network#deviceInvalid
  * @type {object}
- * @property {int} networkId - The NetworkId that is invalid
  * @property {int} deviceId - The DeviceId that is invalid
  */
 /**
@@ -74,10 +72,10 @@ catch (ex) {
  *
  * @constructor
  * @param {object} config - The RF config to use
+ * @param {object} db - A connection to the database
  */
-function Network(config) {
+function Network(config, db) {
   EventEmitter.call(this);
-  this.devices = [];
   this.config = {
     networkId: 0,
     bufferSize: 32,
@@ -94,6 +92,9 @@ function Network(config) {
   extend(this.config, config || {});
   this._nextDeviceId = 1;
   this.reservations = [];
+  this.db = db;
+
+  this.devices = Device.loadAll(this.db);
 
   //setup rf device
   if (RF24) {
@@ -191,7 +192,7 @@ Network.prototype._stopListen = function () {
 Network. prototype._getNextMessage = function(device){
   var outbound;
   //todo: use latest message from admin app
-  if (!outbound) outbound = new Message({networkId: device.networkId, deviceId: device.deviceId, instruction: instructions.WAKE, sleep: 10});
+  if (!outbound) outbound = new Message({networkId: this.config.networkId, deviceId: device.deviceId, instruction: instructions.WAKE, sleep: 10});
   this.emit('deviceNextMessage', {device: device, message: outbound});
   return outbound;
 };
@@ -221,7 +222,7 @@ Network.prototype._processGeneral = function(message){
   var outbound;
   if (!device) {
     outbound = new Message({networkId: this.config.networkId, deviceId: message.deviceId, data: message.data, fromCommander: true, instruction: instructions.NETWORK_INVALID});
-    this.emit('deviceInvalid', {networkId: message.networkId, deviceId: message.deviceId});
+    this.emit('deviceInvalid', {deviceId: message.deviceId});
   }
   else{
     outbound = message.isRelay && this._getNextMessage(device) || new Message({networkId: this.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: instructions.PING});
@@ -232,27 +233,36 @@ Network.prototype._processGeneral = function(message){
 Network.prototype._process[instructions.NETWORK_CONNECT] = function(message){
   var hardwareId = message.data.readUInt16LE(0);
   var outbound = new Message({data: message.data, fromCommander: true, networkId: this.config.networkId, instruction: instructions.NETWORK_NEW});
-  var reservation = this._getReservation(hardwareId);
-  if (reservation) {
-    outbound.deviceId = reservation.deviceId;
+  var device = this._getDeviceForHardwareId(hardwareId);
+  if (device) {
+    this.emit('deviceConnectExisting', {device: device});
+    outbound.deviceId = device.deviceId;
   }
   else {
-    reservation = this._createReservation(hardwareId);
-    outbound.deviceId = reservation.deviceId;
-    this.emit('reservationNew', {reservation: reservation});
+    var device = new Device({hardwareId: hardwareId});
+    device.save(this.db);
+    this.devices.push(device);
+    outbound.deviceId = device.deviceId;
+    this.emit('deviceConnectNew', {device: device});
   }
   return outbound;
 };
 //---------- NETWORK_CONFIRM ----------
 Network.prototype._process[instructions.NETWORK_CONFIRM] = function(message){
-  var device = this._confirmReservation(message.deviceId);
+  var device = this._getDevice(message.deviceId);
   var outbound;
   if (!device) {
-    outbound = new Message({data: message.data, fromCommander: true, instruction: instructions.NETWORK_INVALID});
-    this.emit('reservationInvalid', {networkId: message.networkId, deviceId: message.deviceId});
+    this.emit('deviceConfirmInvalid', {deviceId: message.deviceId});
+    outbound = new Message({data: message.data, instruction: instructions.NETWORK_INVALID});
   }
   else {
-    this.emit('deviceNew', {device: device});
+    if (!device.confirmed) {
+      device.confirm(this.db);
+      this.emit('deviceConfirmNew', {device: device});
+    }
+    else {
+      this.emit('deviceConfirmExisting', {device: device})
+    }
     outbound = message.isRelay && this._getNextMessage(device) || new Message({networkId: this.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: instructions.PING});
   }
   return outbound;
@@ -260,53 +270,34 @@ Network.prototype._process[instructions.NETWORK_CONFIRM] = function(message){
 //---------- PING_CONFIRM ----------
 Network.prototype._process[instructions.PING_CONFIRM] = function(message){
   var device = this._getDevice(message.deviceId);
-  if (!message.isRelay) {
-    var outbound = this._getNextMessage(device);
-    this.send(outbound);
+  var outbound;
+  if (!device) {
+    this.emit('deviceInvalid', {deviceId: message.deviceId});
+    outbound = new Message({data: message.data, instruction: instructions.NETWORK_INVALID});
   }
-  //todo: calculate ping time
-  this.emit('pingConfirm', {device: device});
+  else {
+    if (!message.isRelay) outbound = this._getNextMessage(device);
+    //todo: calculate ping time
+    this.emit('pingConfirm', {device: device});
+  }
   return outbound;
 };
-//==================== Reservations ====================
-Network.prototype._getReservation = function (hardwareId) {
-  for (var ct = 0; ct < this.reservations.length; ct++) {
-    if (this.reservations[ct].hardwareId == hardwareId) return this.reservations[ct];
+//==================== Devices ====================
+Network.prototype._getDeviceForHardwareId = function (hardwareId) {
+  for (var ct = 0; ct < this.devices.length; ct++) {
+    if (this.devices[ct].hardwareId == hardwareId) return this.devices[ct];
   }
   return null;
 };
-Network.prototype._createReservation = function (hardwareId) {
-  var reservation = {networkId: this.config.networkId, deviceId: this._nextDeviceId++, hardwareId: hardwareId};
-  this.reservations.push(reservation);
-  return reservation;
-};
-Network.prototype._confirmReservation = function (deviceId) {
-  var reservation;
-  for (var ct = 0; ct < this.reservations.length; ct++) {
-    if (this.reservations[ct].networkId == this.config.networkId && this.reservations[ct].deviceId == deviceId) {
-      reservation = this.reservations.splice(ct, 1)[0];
-      break;
-    }
-  }
-  if (!reservation) return null;
-  this.devices.push({
-    networkId: this.config.networkId, deviceId: reservation.deviceId, hardwareId: reservation.hardwareId,
-    nextTransactionId: 0, inbound: [], outbound: []
-  });
-  return this.devices[this.devices.length - 1];
-};
-//==================== Devices ====================
-Network.prototype._loadDevices = function(db){
-
-};
 Network.prototype._getDevice = function (deviceId) {
   for (var ct = 0; ct < this.devices.length; ct++) {
-    if (this.devices[ct].networkId == this.config.networkId && this.devices[ct].deviceId == deviceId) {
+    if (this.devices[ct].deviceId == deviceId) {
       return this.devices[ct];
     }
   }
   return null;
 };
+
 //==================== Transactions ====================
 Network.prototype._incrementTransactionId = function (device, message) {
   if (!device || !message) return;

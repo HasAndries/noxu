@@ -9,7 +9,8 @@
     "networkDb": {
       "host": "TheOne",
       "user": "noxu",
-      "password": "disk"
+      "password": "disk",
+      "database": "noxu_network"
     }
   },
   "andries": {
