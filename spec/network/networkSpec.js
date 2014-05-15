@@ -8,14 +8,15 @@ describe('Network', function () {
   var db, network, nextDeviceId;
   beforeEach(function () {
     db = new Help.MockDb();
-    db.expect('select * from devices', null, function(params){
-      var output = [{deviceId:1}, {deviceId:2}];
-      return output;
+    db.when('select * from devices', null, function(params){
+      //var output = [{deviceId:1, hardwareId: 4411, nextTransactionId: 1, confirmed}, {deviceId:2}];
+      //return [output];
+      return [[]];
     });
     db.when('insert into devices set ?', null, function(params){
       var output = [];
       output.insertId = nextDeviceId++;
-      return output;
+      return [output];
     });
     db.when('update devices set ? where deviceId = ?', null, function(params){
       return [];
@@ -35,12 +36,10 @@ describe('Network', function () {
     it('should load all devices from the datastore', function(){
       db.expect('select * from devices', null, function(params){
         var output = [{deviceId:1}, {deviceId:2}];
-        return output;
+        return [output];
       });
 
       var network = new Network({networkId: 99}, db);
-      console.log('----------------------');
-      console.log(network.devices);
     });
   });
   //========== Helpers ==========
@@ -88,7 +87,7 @@ describe('Network', function () {
         buffer.writeUInt16LE(hardwareId, 0);
         expect(network.radio.lastMessage.data.toJSON()).toEqual(buffer.toJSON());
       });
-      it('should raise event [deviceConnectNew] and send [NETWORK_NEW] for an existing HardwareId that is not confirmed', function () {
+      it('should raise event [deviceConnectNew] and send [NETWORK_NEW] for an existing HardwareId that is not confirmed', function (done) {
         //event
         network.on('deviceConnectNew', function (input) {
           expect(input.device.deviceId).toEqual(1);
@@ -103,7 +102,7 @@ describe('Network', function () {
         expect(network.devices.length).toEqual(1);
         expect(network.devices[0]).toEqual(device);
         expect(device.hardwareId).toEqual(hardwareId);
-        expect(device.nextTransactionId).toEqual(1);
+        expect(device.nextTransactionId).toEqual(2);
         expect(device.confirmed).toEqual(0);
 
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.NETWORK_NEW);
@@ -113,7 +112,7 @@ describe('Network', function () {
         buffer.writeUInt16LE(hardwareId, 0);
         expect(network.radio.lastMessage.data.toJSON()).toEqual(buffer.toJSON());
       });
-      it('should raise event [deviceConnectExisting] and send [NETWORK_NEW] for an existing HardwareId that is confirmed', function () {
+      it('should raise event [deviceConnectExisting] and send [NETWORK_NEW] for an existing HardwareId that is confirmed', function (done) {
         //event
         network.on('deviceConnectExisting', function (input) {
           expect(input.device.deviceId).toEqual(1);
@@ -129,8 +128,8 @@ describe('Network', function () {
         expect(network.devices.length).toEqual(1);
         expect(network.devices[0]).toEqual(device);
         expect(device.hardwareId).toEqual(hardwareId);
-        expect(device.nextTransactionId).toEqual(1);
-        expect(device.confirmed).toEqual(0);
+        expect(device.nextTransactionId).toEqual(2);
+        expect(device.confirmed).toEqual(1);
 
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.NETWORK_NEW);
         expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
@@ -141,7 +140,6 @@ describe('Network', function () {
       });
     });
     describe('[NETWORK_CONFIRM]', function () {
-      /*
       it('should confirm the device and raise event [deviceConfirmNew] for an unconfirmed Device', function (done) {
         //setup
         var device = NETWORK_CONNECT(network);
@@ -159,7 +157,7 @@ describe('Network', function () {
 
         expect(device.deviceId).toEqual(1);
         expect(device.hardwareId).toEqual(device.hardwareId);
-        expect(device.nextTransactionId).toEqual(1);
+        expect(device.nextTransactionId).toEqual(2);
         expect(device.confirmed).toEqual(1);
 
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.PING);
@@ -183,13 +181,12 @@ describe('Network', function () {
 
         expect(device.deviceId).toEqual(1);
         expect(device.hardwareId).toEqual(device.hardwareId);
-        expect(device.nextTransactionId).toEqual(1);
+        expect(device.nextTransactionId).toEqual(3);
         expect(device.confirmed).toEqual(1);
 
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.PING);
         expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
       });
-      */
       it('should raise event [deviceConfirmInvalid] and send [NETWORK_INVALID] for an invalid Device', function (done) {
         //event
         network.on('deviceConfirmInvalid', function (input) {
@@ -209,8 +206,8 @@ describe('Network', function () {
         var device = NETWORK_CONNECT(network);
         NETWORK_CONFIRM(network, device.deviceId);
 
-        expect(network.devices[0].nextTransactionId).toEqual(1);
-        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.PING);
+        expect(network.devices[0].nextTransactionId).toEqual(2);
+        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.PING);
         //expect(network.devices[0].outbound[0].message).toEqual(network.radio.lastMessage);
 
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.PING);
@@ -224,8 +221,8 @@ describe('Network', function () {
         network.radio.queue(message.toBuffer());
         network._processInbound();
 
-        expect(network.devices[0].nextTransactionId).toEqual(1);
-        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.WAKE);
+        expect(network.devices[0].nextTransactionId).toEqual(2);
+        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.WAKE);
         //expect(network.devices[0].outbound[0].message).toEqual(network.radio.lastMessage);
 
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
@@ -250,13 +247,14 @@ describe('Network', function () {
         network.radio.queue(message.toBuffer());
         network._processInbound();
 
-        expect(network.devices[0].nextTransactionId).toEqual(4);
-        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.PING);
+        expect(network.devices[0].nextTransactionId).toEqual(3);
+        expect(network.devices[0].inbound.length).toEqual(2);
+        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.PING);
 
-        expect(network.devices[0].inbound.length).toEqual(1);
-        expect(network.devices[0].inbound[0].message).toEqual(message);
-        expect(network.devices[0].inbound[0].message.instruction).toEqual(Instructions.PING_CONFIRM);
-        expect(network.devices[0].inbound[0].message.deviceId).toEqual(network.devices[0].deviceId);
+        expect(network.devices[0].inbound.length).toEqual(2);
+        expect(network.devices[0].inbound[1].message).toEqual(message);
+        expect(network.devices[0].inbound[1].message.instruction).toEqual(Instructions.PING_CONFIRM);
+        expect(network.devices[0].inbound[1].message.deviceId).toEqual(network.devices[0].deviceId);
       });
       it('should raise [pingConfirm]+[deviceNextMessage] and send [Next Message] if message not [isRelay]', function(done){
         //setup
@@ -279,13 +277,13 @@ describe('Network', function () {
         network.radio.queue(message.toBuffer());
         network._processInbound();
 
-        expect(network.devices[0].inbound.length).toEqual(1);
-        expect(network.devices[0].inbound[0].message).toEqual(message);
-        expect(network.devices[0].inbound[0].message.instruction).toEqual(Instructions.PING_CONFIRM);
-        expect(network.devices[0].inbound[0].message.deviceId).toEqual(network.devices[0].deviceId);
+        expect(network.devices[0].inbound.length).toEqual(2);
+        expect(network.devices[0].inbound[1].message).toEqual(message);
+        expect(network.devices[0].inbound[1].message.instruction).toEqual(Instructions.PING_CONFIRM);
+        expect(network.devices[0].inbound[1].message.deviceId).toEqual(network.devices[0].deviceId);
 
-        expect(network.devices[0].nextTransactionId).toEqual(4);
-        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.WAKE);
+        expect(network.devices[0].nextTransactionId).toEqual(3);
+        expect(network.devices[0].outbound[2].message.instruction).toEqual(Instructions.WAKE);
 
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
         expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
@@ -380,9 +378,9 @@ describe('Network', function () {
       expect(devices.length).toEqual(2);
       expect(devices[1].deviceId).toEqual(2);
       expect(devices[1].hardwareId).toEqual(device.hardwareId);
-      expect(devices[1].nextTransactionId).toEqual(1);
-      expect(devices[1].inbound.length).toEqual(0);
-      expect(devices[1].outbound.length).toEqual(1);
+      expect(devices[1].nextTransactionId).toEqual(2);
+      expect(devices[1].inbound.length).toEqual(1);
+      expect(devices[1].outbound.length).toEqual(2);
     });
   });
 });

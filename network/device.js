@@ -11,12 +11,11 @@ Device.loadAll = function(db){
   var output = [];
   //console.log(db.config.connectionConfig.database);
   db.query('select * from devices', function(err, rows){
-    console.log(rows);
     if (err) throw err;
-    for(var ct=0;ct<rows.count;ct++){
+    for(var ct=0;ct<rows.length;ct++){
       var device = new Device({deviceId: rows[ct].deviceId, hardwareId: rows[ct].hardwareId, nextTransactionId: rows[ct].nextTransactionId, confirmed: rows[ct].confirmed});
       device.loadTraffic(db);
-      output.push(new Device(options));
+      output.push(device);
     }
   });
   return output;
@@ -27,16 +26,16 @@ Device.prototype.save = function(db){
     nextTransactionId: this.nextTransactionId,
     confirmed: this.confirmed
   };
-  if (this.deviceId){ //insert new
+  if (!this.deviceId){ //insert new
     db.query('insert into devices set ?', [input], function(err, rows){
       if (err) throw err;
       this.deviceId = rows.insertId;
-    });
+    }.bind(this));
   }
   else{ //update existing
     db.query('update devices set ? where deviceId = ?',[input, this.deviceId], function(err, rows){
       if (err) throw err;
-    });
+    }.bind(this));
   }
 
 };

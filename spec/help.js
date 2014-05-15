@@ -56,12 +56,14 @@ MockDb.prototype.expect = function(query, params, callback){
 MockDb.prototype.query = function(query, params, callback){
   var list = this.expectList[query] && this.expectList || this.whenList[query] && this.whenList || null;
   if (list){
+    if (typeof(params) == 'function') callback = params;
     if (!list[query].params || list[query].params == params) {
       list[query].run++;
       var output = list[query].callback(params);
-      var err = output.err || null;
-      var rows = output.rows || output;
+      var rows = output[0] || null;
+      var err = output[1] || null;
       callback(err, rows);
+      return;
     }
   }
   throw new Error('No query callback for [' + query + ']');
