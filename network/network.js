@@ -210,7 +210,8 @@ Network.prototype._processInbound = function () {
       if (message.validate()) {
         this._stampInbound(message, time);
         this.emit('inbound', {buffer: buffer, message: message});
-        var outbound = this._process[message.instruction] && this._process[message.instruction].bind(this)(message) || this._processGeneral.bind(this)(message);
+        var inbound = this._process[message.instruction] || this._processGeneral;
+        var outbound = inbound.bind(this)(message);
         if (outbound) this.send(outbound);
       }
     }
@@ -276,7 +277,9 @@ Network.prototype._process[instructions.PING_CONFIRM] = function(message){
     outbound = new Message({data: message.data, instruction: instructions.NETWORK_INVALID});
   }
   else {
-    if (!message.isRelay) outbound = this._getNextMessage(device);
+    if (!message.isRelay){
+      outbound = this._getNextMessage(device);
+    }
     //todo: calculate ping time
     this.emit('pingConfirm', {device: device});
   }

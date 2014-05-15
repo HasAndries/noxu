@@ -35,11 +35,15 @@ describe('Network', function () {
   describe('constructor', function(){
     it('should load all devices from the datastore', function(){
       db.expect('select * from devices', null, function(params){
-        var output = [{deviceId:1}, {deviceId:2}];
+        var output = [
+          {deviceId:1, hardwareId: 4411, nextTransactionId: 1, confirmed: 0},
+          {deviceId:2}];
         return [output];
       });
 
       var network = new Network({networkId: 99}, db);
+
+      expect(network.devices.length).toEqual(2);
     });
   });
   //========== Helpers ==========
@@ -105,6 +109,16 @@ describe('Network', function () {
         expect(device.nextTransactionId).toEqual(2);
         expect(device.confirmed).toEqual(0);
 
+        //inbound
+        expect(network.devices[0].inbound.length).toEqual(0);
+
+        //outbound
+        expect(network.devices[0].nextTransactionId).toEqual(2);
+        expect(network.devices[0].outbound.length).toEqual(2);
+        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.NETWORK_NEW);
+        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.NETWORK_NEW);
+
+        //radio
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.NETWORK_NEW);
         expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
 
@@ -131,6 +145,16 @@ describe('Network', function () {
         expect(device.nextTransactionId).toEqual(2);
         expect(device.confirmed).toEqual(1);
 
+        //inbound
+        expect(network.devices[0].inbound.length).toEqual(0);
+
+        //outbound
+        expect(network.devices[0].nextTransactionId).toEqual(2);
+        expect(network.devices[0].outbound.length).toEqual(2);
+        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.NETWORK_NEW);
+        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.NETWORK_NEW);
+
+        //radio
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.NETWORK_NEW);
         expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
 
@@ -159,9 +183,6 @@ describe('Network', function () {
         expect(device.hardwareId).toEqual(device.hardwareId);
         expect(device.nextTransactionId).toEqual(2);
         expect(device.confirmed).toEqual(1);
-
-        expect(network.radio.lastMessage.instruction).toEqual(Instructions.PING);
-        expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
       });
       it('should confirm the device and raise event [deviceConfirmExisting] for a confirmed Device', function (done) {
         //setup
@@ -183,9 +204,6 @@ describe('Network', function () {
         expect(device.hardwareId).toEqual(device.hardwareId);
         expect(device.nextTransactionId).toEqual(3);
         expect(device.confirmed).toEqual(1);
-
-        expect(network.radio.lastMessage.instruction).toEqual(Instructions.PING);
-        expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
       });
       it('should raise event [deviceConfirmInvalid] and send [NETWORK_INVALID] for an invalid Device', function (done) {
         //event
@@ -197,6 +215,7 @@ describe('Network', function () {
 
         expect(network.devices.length).toEqual(0);
 
+        //radio
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.NETWORK_INVALID);
         expect(network.radio.lastMessage.networkId).toEqual(0);
         expect(network.radio.lastMessage.data).toEqual(null);
@@ -206,10 +225,17 @@ describe('Network', function () {
         var device = NETWORK_CONNECT(network);
         NETWORK_CONFIRM(network, device.deviceId);
 
-        expect(network.devices[0].nextTransactionId).toEqual(2);
-        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.PING);
-        //expect(network.devices[0].outbound[0].message).toEqual(network.radio.lastMessage);
+        //inbound
+        expect(network.devices[0].inbound.length).toEqual(1);
+        expect(network.devices[0].inbound[0].message.instruction).toEqual(Instructions.NETWORK_CONFIRM);
 
+        //outbound
+        expect(network.devices[0].nextTransactionId).toEqual(2);
+        expect(network.devices[0].outbound.length).toEqual(2);
+        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.NETWORK_NEW);
+        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.PING);
+
+        //radio
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.PING);
         expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
         expect(network.radio.lastMessage.sleep).toEqual(0);
@@ -221,17 +247,24 @@ describe('Network', function () {
         network.radio.queue(message.toBuffer());
         network._processInbound();
 
-        expect(network.devices[0].nextTransactionId).toEqual(2);
-        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.WAKE);
-        //expect(network.devices[0].outbound[0].message).toEqual(network.radio.lastMessage);
+        //inbound
+        expect(network.devices[0].inbound.length).toEqual(1);
+        expect(network.devices[0].inbound[0].message.instruction).toEqual(Instructions.NETWORK_CONFIRM);
 
+        //outbound
+        expect(network.devices[0].nextTransactionId).toEqual(2);
+        expect(network.devices[0].outbound.length).toEqual(2);
+        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.NETWORK_NEW);
+        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.WAKE);
+
+        //radio
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
         expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
         expect(network.radio.lastMessage.sleep).toEqual(10);
       });
     });
     describe('[PING_CONFIRM]', function () {
-      it('should raise event [pingConfirm] and log inbound details if message [isRelay]', function (done) {
+      it('should raise event [pingConfirm] if message [isRelay]', function (done) {
         //setup
         var device = NETWORK_CONNECT(network);
         NETWORK_CONFIRM(network, device.deviceId);
@@ -247,14 +280,16 @@ describe('Network', function () {
         network.radio.queue(message.toBuffer());
         network._processInbound();
 
-        expect(network.devices[0].nextTransactionId).toEqual(3);
+        //inbound
         expect(network.devices[0].inbound.length).toEqual(2);
-        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.PING);
-
-        expect(network.devices[0].inbound.length).toEqual(2);
-        expect(network.devices[0].inbound[1].message).toEqual(message);
+        expect(network.devices[0].inbound[0].message.instruction).toEqual(Instructions.NETWORK_CONFIRM);
         expect(network.devices[0].inbound[1].message.instruction).toEqual(Instructions.PING_CONFIRM);
-        expect(network.devices[0].inbound[1].message.deviceId).toEqual(network.devices[0].deviceId);
+
+        //outbound
+        expect(network.devices[0].nextTransactionId).toEqual(2);
+        expect(network.devices[0].outbound.length).toEqual(2);
+        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.NETWORK_NEW);
+        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.PING);
       });
       it('should raise [pingConfirm]+[deviceNextMessage] and send [Next Message] if message not [isRelay]', function(done){
         //setup
@@ -277,14 +312,19 @@ describe('Network', function () {
         network.radio.queue(message.toBuffer());
         network._processInbound();
 
+        //inbound
         expect(network.devices[0].inbound.length).toEqual(2);
-        expect(network.devices[0].inbound[1].message).toEqual(message);
+        expect(network.devices[0].inbound[0].message.instruction).toEqual(Instructions.NETWORK_CONFIRM);
         expect(network.devices[0].inbound[1].message.instruction).toEqual(Instructions.PING_CONFIRM);
-        expect(network.devices[0].inbound[1].message.deviceId).toEqual(network.devices[0].deviceId);
 
+        //outbound
         expect(network.devices[0].nextTransactionId).toEqual(3);
+        expect(network.devices[0].outbound.length).toEqual(3);
+        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.NETWORK_NEW);
+        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.PING);
         expect(network.devices[0].outbound[2].message.instruction).toEqual(Instructions.WAKE);
 
+        //radio
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
         expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
       });
@@ -316,8 +356,19 @@ describe('Network', function () {
         network.radio.queue(message.toBuffer());
         network._processInbound();
 
-        //expect(network.devices[0].outbound[0].message).toEqual(network.radio.lastMessage);
+        //inbound
+        expect(network.devices[0].inbound.length).toEqual(2);
+        expect(network.devices[0].inbound[0].message.instruction).toEqual(Instructions.NETWORK_CONFIRM);
+        expect(network.devices[0].inbound[1].message.instruction).toEqual(Instructions.WAKE);
 
+        //outbound
+        expect(network.devices[0].nextTransactionId).toEqual(3);
+        expect(network.devices[0].outbound.length).toEqual(3);
+        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.NETWORK_NEW);
+        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.PING);
+        expect(network.devices[0].outbound[2].message.instruction).toEqual(Instructions.PING);
+
+        //radio
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.PING);
         expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
         expect(network.radio.lastMessage.sleep).toEqual(0);
@@ -332,8 +383,19 @@ describe('Network', function () {
         network.radio.queue(message.toBuffer());
         network._processInbound();
 
-        //expect(network.devices[0].outbound[0].message).toEqual(network.radio.lastMessage);
+        //inbound
+        expect(network.devices[0].inbound.length).toEqual(2);
+        expect(network.devices[0].inbound[0].message.instruction).toEqual(Instructions.NETWORK_CONFIRM);
+        expect(network.devices[0].inbound[1].message.instruction).toEqual(Instructions.WAKE);
 
+        //outbound
+        expect(network.devices[0].nextTransactionId).toEqual(3);
+        expect(network.devices[0].outbound.length).toEqual(3);
+        expect(network.devices[0].outbound[0].message.instruction).toEqual(Instructions.NETWORK_NEW);
+        expect(network.devices[0].outbound[1].message.instruction).toEqual(Instructions.PING);
+        expect(network.devices[0].outbound[2].message.instruction).toEqual(Instructions.WAKE);
+
+        //radio
         expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
         expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
         expect(network.radio.lastMessage.sleep).toEqual(10);
