@@ -1,5 +1,4 @@
 var Help = require('../help');
-var mysql = require('mysql')
 var Network = require('../../network/network');
 var Message = require('../../network/message');
 var Instructions = require('../../network/instructions');
