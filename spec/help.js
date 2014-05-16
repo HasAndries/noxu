@@ -1,5 +1,4 @@
 var Message = require('../network/message');
-var Instructions = require('../network/instructions');
 
 function Help() {
 

@@ -19,6 +19,12 @@ describe('Device', function () {
     db.when('update devices set ? where deviceId = ?', null, function(params){
       return [];
     });
+    db.when('select * from transactions where deviceId = ?', null, function(params){
+      var output = [
+        {transactionId:1, deviceId:55},
+        {transactionId:2, deviceId:55}];
+      return [output];
+    });
   });
   afterEach(function () {
     db.verify();
@@ -31,17 +37,15 @@ describe('Device', function () {
       expect(device.hardwareId).toEqual(null);
       expect(device.nextTransactionId).toEqual(0);
       expect(device.confirmed).toEqual(0);
-      expect(device.inbound).toEqual([]);
-      expect(device.outbound).toEqual([]);
+      expect(device.transactions).toEqual([]);
     });
     it('should create a Device based on input options', function () {
-      var device = new Device({deviceId:5, hardwareId: 32, nextTransactionId: 7, confirmed: 1, inbound: [1], outbound: [5]});
+      var device = new Device({deviceId:5, hardwareId: 32, nextTransactionId: 7, confirmed: 1, transactions: [1,5]});
       expect(device.deviceId).toEqual(5);
       expect(device.hardwareId).toEqual(32);
       expect(device.nextTransactionId).toEqual(7);
       expect(device.confirmed).toEqual(1);
-      expect(device.inbound).toEqual([1]);
-      expect(device.outbound).toEqual([5]);
+      expect(device.transactions).toEqual([1,5]);
     });
   });
   describe('loadAll', function(){
@@ -71,21 +75,52 @@ describe('Device', function () {
     });
   });
   describe('save', function(){
-    it('should insert a new Device', function(){
-
+    it('should insert a new Device and assign [deviceId]', function(){
+      var device = new Device({hardwareId: 32, nextTransactionId: 7, confirmed: 1});
+      db.expect('insert into devices set ?', null, function(params){
+        expect(params).toEqual([{hardwareId: 32, nextTransactionId: 7, confirmed: 1}]);
+        var output = [];
+        output.insertId = 78;
+        return [output];
+      });
+      device.save(db);
+      expect(device.deviceId).toEqual(78);
     });
     it('should update an existing Device', function(){
-
+      var device = new Device({deviceId:55, hardwareId: 32, nextTransactionId: 7, confirmed: 1});
+      db.expect('update devices set ? where deviceId = ?', null, function(params){
+        expect(params).toEqual([{hardwareId: 32, nextTransactionId: 7, confirmed: 1}, 55]);
+        return [];
+      });
+      device.save(db);
+    });
+    it('should exclude fields that are not specified in in input fields list', function(){
+      var device = new Device({deviceId:55, hardwareId: 32, nextTransactionId: 7, confirmed: 1});
+      db.expect('update devices set ? where deviceId = ?', null, function(params){
+        expect(params).toEqual([{hardwareId: 32}, 55]);
+        return [];
+      });
+      device.save(db, ['hardwareId']);
     });
   });
   describe('confirm', function(){
     it('should set [confirmed] and save the Device', function(){
-
+      var device = new Device({deviceId:55, hardwareId: 32, nextTransactionId: 7, confirmed: 1});
+      db.expect('update devices set ? where deviceId = ?', null, function(params){
+        expect(params).toEqual([{hardwareId: 32, nextTransactionId: 7, confirmed: 1}, 55]);
+        var output = [];
+        output.insertId = 78;
+        return [output];
+      });
+      device.save(db);
     });
   });
   describe('loadTransactions', function(){
     it('should load all Transactions for a device', function(){
-
+      var device = new Device({deviceId:55});
+      device.loadTransactions(db);
+      expect(device.transactions.length).toEqual(2);
+      expect(device.transactions[0]).toEqual({transactionId:1, deviceId: 55});
     });
     it('should load the 10 last Transactions for a device', function(){
 

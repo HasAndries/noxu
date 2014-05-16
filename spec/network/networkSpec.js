@@ -1,7 +1,7 @@
 var Help = require('../help');
 var Network = require('../../network/network');
 var Message = require('../../network/message');
-var Instructions = require('../../network/instructions');
+var Instructions = require('../../network/enums').Instructions;
 
 describe('Network', function () {
   var db, network, nextDeviceId;

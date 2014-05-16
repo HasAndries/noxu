@@ -4,7 +4,7 @@ var EventEmitter = require('events').EventEmitter;
 var Fiber = require('fibers');
 var Device = require('./device');
 var Message = require('./message');
-var instructions = require('./instructions');
+var Instructions = require('./enums').Instructions;
 try {
   var RF24 = require('../rf24');
 }
@@ -192,7 +192,7 @@ Network.prototype._stopListen = function () {
 Network. prototype._getNextMessage = function(device){
   var outbound;
   //todo: use latest message from admin app
-  if (!outbound) outbound = new Message({networkId: this.config.networkId, deviceId: device.deviceId, instruction: instructions.WAKE, sleep: 10});
+  if (!outbound) outbound = new Message({networkId: this.config.networkId, deviceId: device.deviceId, instruction: Instructions.WAKE, sleep: 10});
   this.emit('deviceNextMessage', {device: device, message: outbound});
   return outbound;
 };
@@ -222,18 +222,18 @@ Network.prototype._processGeneral = function(message){
   var device = this._getDevice(message.deviceId);
   var outbound;
   if (!device) {
-    outbound = new Message({networkId: this.config.networkId, deviceId: message.deviceId, data: message.data, fromCommander: true, instruction: instructions.NETWORK_INVALID});
+    outbound = new Message({networkId: this.config.networkId, deviceId: message.deviceId, data: message.data, fromCommander: true, instruction: Instructions.NETWORK_INVALID});
     this.emit('deviceInvalid', {deviceId: message.deviceId});
   }
   else{
-    outbound = message.isRelay && this._getNextMessage(device) || new Message({networkId: this.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: instructions.PING});
+    outbound = message.isRelay && this._getNextMessage(device) || new Message({networkId: this.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: Instructions.PING});
   }
   return outbound;
 };
 //---------- NETWORK_CONNECT ----------
-Network.prototype._process[instructions.NETWORK_CONNECT] = function(message){
+Network.prototype._process[Instructions.NETWORK_CONNECT] = function(message){
   var hardwareId = message.data.readUInt16LE(0);
-  var outbound = new Message({data: message.data, fromCommander: true, networkId: this.config.networkId, instruction: instructions.NETWORK_NEW});
+  var outbound = new Message({data: message.data, fromCommander: true, networkId: this.config.networkId, instruction: Instructions.NETWORK_NEW});
   var device = this._getDeviceForHardwareId(hardwareId);
   if (device) {
     this.emit('deviceConnectExisting', {device: device});
@@ -249,12 +249,12 @@ Network.prototype._process[instructions.NETWORK_CONNECT] = function(message){
   return outbound;
 };
 //---------- NETWORK_CONFIRM ----------
-Network.prototype._process[instructions.NETWORK_CONFIRM] = function(message){
+Network.prototype._process[Instructions.NETWORK_CONFIRM] = function(message){
   var device = this._getDevice(message.deviceId);
   var outbound;
   if (!device) {
     this.emit('deviceConfirmInvalid', {deviceId: message.deviceId});
-    outbound = new Message({data: message.data, instruction: instructions.NETWORK_INVALID});
+    outbound = new Message({data: message.data, instruction: Instructions.NETWORK_INVALID});
   }
   else {
     if (!device.confirmed) {
@@ -264,17 +264,17 @@ Network.prototype._process[instructions.NETWORK_CONFIRM] = function(message){
     else {
       this.emit('deviceConfirmExisting', {device: device})
     }
-    outbound = message.isRelay && this._getNextMessage(device) || new Message({networkId: this.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: instructions.PING});
+    outbound = message.isRelay && this._getNextMessage(device) || new Message({networkId: this.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: Instructions.PING});
   }
   return outbound;
 };
 //---------- PING_CONFIRM ----------
-Network.prototype._process[instructions.PING_CONFIRM] = function(message){
+Network.prototype._process[Instructions.PING_CONFIRM] = function(message){
   var device = this._getDevice(message.deviceId);
   var outbound;
   if (!device) {
     this.emit('deviceInvalid', {deviceId: message.deviceId});
-    outbound = new Message({data: message.data, instruction: instructions.NETWORK_INVALID});
+    outbound = new Message({data: message.data, instruction: Instructions.NETWORK_INVALID});
   }
   else {
     if (!message.isRelay){

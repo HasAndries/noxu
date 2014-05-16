@@ -1,4 +1,4 @@
-var Instructions = require('./instructions');
+var Instructions = require('./enums').Instructions;
 
 function isBitSet(b, n) {
   var mask = [128, 64, 32, 16, 8, 4, 2, 1];
