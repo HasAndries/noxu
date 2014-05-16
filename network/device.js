@@ -1,4 +1,5 @@
 function Device(options){
+  options = options || {};
   this.deviceId = options.deviceId || null;
   this.hardwareId = options.hardwareId || null;
   this.nextTransactionId = options.nextTransactionId || 0;
