@@ -1,4 +1,5 @@
-var Transaction = require('./transaction');
+var Outbound = require('./outbound');
+var Inbound = require('./inbound');
 
 function Device(options){
   options = options || {};
@@ -6,7 +7,8 @@ function Device(options){
   this.hardwareId = options.hardwareId || null;
   this.nextTransactionId = options.nextTransactionId || 0;
   this.confirmed = options.confirmed || 0;
-  this.transactions = options.transactions || [];
+  this.outbound = options.outbound || [];
+  this.inbound = options.inbound || [];
 }
 
 Device.loadAll = function(db){
@@ -50,10 +52,30 @@ Device.prototype.confirm = function(db){
   this.save(db);
 };
 Device.prototype.loadTransactions = function(db){
-  Transaction.loadForDevice(db, this.deviceId);
+  this.outbound = Outbound.loadForDevice(db, this.deviceId);
+  this.inbound = Inbound.loadForDevice(db, this.deviceId);
 };
-Device.prototype.addTransaction = function(db, transaction){
+Device.prototype.stampOutbound = function(db, buffer){
+  var outbound = new Outbound({transactionId: this.nextTransactionId, deviceId: this.deviceId, buffer:buffer, time:process.hrtime()});
+  outbound.save(db);
+  this.outbound.push(outbound);
+  this.nextTransactionId++;
+  this.save(db, ['nextTransactionId']);
 
+};
+Device.prototype.stampInbound = function(db, transactionId, buffer, time){
+  var inbound = new Inbound({transactionId: transactionId, deviceId: this.deviceId, buffer:buffer, time:time});
+  //locate first matching outbound
+  for(var ct=0;ct<this.outbound.length;ct++){
+    if (this.outbound[ct].transactionId == transactionId){
+      inbound.outboundId = this.outbound[ct].outboundId;
+      var diff = process.hrtime(this.outbound[ct].time);
+      inbound.latency = diff[0] * 1e9 + diff[1];
+      break;
+    }
+  }
+  inbound.save(db);
+  this.inbound.push(inbound);
 };
 
 module.exports = Device;

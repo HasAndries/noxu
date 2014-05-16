@@ -4,6 +4,8 @@ var EventEmitter = require('events').EventEmitter;
 var Fiber = require('fibers');
 var Device = require('./device');
 var Message = require('./message');
+var Outbound = require('./outbound');
+var Inbound = require('./inbound');
 var Instructions = require('./enums').Instructions;
 try {
   var RF24 = require('../rf24');
@@ -90,8 +92,6 @@ function Network(config, db) {
     outboundAddress: 0x00F0F0F0F0
   };
   extend(this.config, config || {});
-  this._nextDeviceId = 1;
-  this.reservations = [];
   this.db = db;
 
   this.devices = Device.loadAll(this.db);
@@ -144,22 +144,18 @@ Network.prototype.stop = function () {
  * @param {Message} obj - Message to be serialized and sent
  * @fires Network#outbound
  */
-Network.prototype.send = function (obj) {
-  var list = obj instanceof Array && extend([], obj) || [obj];
-  if (!list.length) return;
+Network.prototype.send = function (device, message) {
   //stop inbound
   if (this.running) this._stopListen();
-  //write messages
-  for (var ct in list) {
-    var device = this._getDevice(list[ct].deviceId);
-    this._incrementTransactionId(device, list[ct]);
-    var buffer = list[ct].toBuffer();
-    if (this.radio) {
-      this._stampOutbound(device, list[ct]);
-      this.radio.write(buffer);
-    }
-    this.emit('outbound', {buffer: buffer, message: list[ct]});
+  if (device) message.transactionId = device.nextTransactionId;
+  var buffer = message.toBuffer();
+  //write message
+  if (this.radio) {
+    this.radio.write(buffer);
   }
+  if (device) device.stampOutbound(this.db, buffer);
+  this.emit('outbound', {device:device, buffer: buffer, message: message});
+
   //start inbound
   if (this.running) this._startListen();
 };
@@ -208,11 +204,14 @@ Network.prototype._processInbound = function () {
       data.copy(buffer);
       var message = new Message({buffer: data, bufferSize: this.config.bufferSize});
       if (message.validate()) {
-        this._stampInbound(message, time);
-        this.emit('inbound', {buffer: buffer, message: message});
+        var device = this._getDevice(message.deviceId);
+        if (device) device.stampInbound(this.db, buffer, time);
+        this.emit('inbound', {device:device, buffer: buffer, message: message});
         var inbound = this._process[message.instruction] || this._processGeneral;
         var outbound = inbound.bind(this)(message);
-        if (outbound) this.send(outbound);
+        if (outbound){
+          this.send(device, outbound);
+        }
       }
     }
   }
@@ -299,35 +298,6 @@ Network.prototype._getDevice = function (deviceId) {
     }
   }
   return null;
-};
-
-//==================== Transactions ====================
-Network.prototype._incrementTransactionId = function (device, message) {
-  if (!device || !message) return;
-  message.transactionId = device.nextTransactionId++;
-};
-Network.prototype._stampOutbound = function (device, message) {
-  if (!device || !message) return;
-  if (!device.outbound)
-    device.outbound = [];
-  device.outbound.push({transactionId: message.transactionId, time: process.hrtime(), message: message});
-};
-Network.prototype._stampInbound = function (message, time) {
-  var device = this._getDevice(message.deviceId);
-  if (!device) return;
-  if (!device.inbound)
-    device.inbound = [];
-  var inbound = {transactionId: message.transactionId, time: time, message: message};
-  //calc ping
-  if (device.outbound) {
-    for (var ct = 0; ct < device.outbound.length; ct++) {
-      if (device.outbound[ct].transactionId == message.transactionId) {
-        var diff = process.hrtime(device.outbound[ct].time);
-        inbound.ping = diff[0] * 1e9 + diff[1];
-      }
-    }
-  }
-  device.inbound.push(inbound);
 };
 
 //==================== Tools ====================

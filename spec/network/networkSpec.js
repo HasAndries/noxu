@@ -417,7 +417,7 @@ describe('Network', function () {
 
       //send outbound pulse
       var message = new Message({instruction: Instructions.PING, networkId: network.config.networkId, deviceId: device.deviceId, data: [1, 2]});
-      network.send(message);
+      network.send(device, message);
 
       expect(network.radio.lastMessage.toBuffer().toJSON()).toEqual(message.toBuffer().toJSON());
       var deviceOutbound = network.devices[0].outbound[network.devices[0].outbound.length-1];
