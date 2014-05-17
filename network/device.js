@@ -9,6 +9,7 @@ function Device(options){
   this.confirmed = options.confirmed || 0;
   this.outbound = options.outbound || [];
   this.inbound = options.inbound || [];
+  this.hrtime = options.hrtime || process.hrtime;
 }
 
 Device.loadAll = function(db){
@@ -56,7 +57,7 @@ Device.prototype.loadTransactions = function(db){
   this.inbound = Inbound.loadForDevice(db, this.deviceId);
 };
 Device.prototype.stampOutbound = function(db, buffer){
-  var outbound = new Outbound({transactionId: this.nextTransactionId, deviceId: this.deviceId, buffer:buffer, time:process.hrtime()});
+  var outbound = new Outbound({transactionId: this.nextTransactionId, deviceId: this.deviceId, buffer:buffer, time:this.hrtime()});
   outbound.save(db);
   this.outbound.push(outbound);
   this.nextTransactionId++;
@@ -69,7 +70,7 @@ Device.prototype.stampInbound = function(db, transactionId, buffer, time){
   for(var ct=0;ct<this.outbound.length;ct++){
     if (this.outbound[ct].transactionId == transactionId){
       inbound.outboundId = this.outbound[ct].outboundId;
-      var diff = process.hrtime(this.outbound[ct].time);
+      var diff = this.hrtime(this.outbound[ct].time);
       inbound.latency = diff[0] * 1e9 + diff[1];
       break;
     }

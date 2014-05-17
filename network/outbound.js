@@ -17,7 +17,7 @@ Outbound.loadForDevice = function(db, deviceId){
         transactionId: rows[ct].transactionId,
         deviceId: rows[ct].deviceId,
         buffer: rows[ct].buffer,
-        time: rows[ct].time
+        time: rows[ct].timeS && rows[ct].timeNs && [rows[ct].timeS, rows[ct].timeNs]
       });
       output.push(outbound);
     }
@@ -29,7 +29,8 @@ Outbound.prototype.save = function(db, fields){
     transactionId: this.transactionId,
     deviceId: this.deviceId,
     buffer: this.buffer,
-    time: this.time
+    timeS: this.time && this.time[0],
+    timeNs: this.time && this.time[1]
   };
   if (fields){
     for(var key in input){

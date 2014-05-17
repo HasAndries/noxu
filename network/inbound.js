@@ -19,9 +19,9 @@ Inbound.loadForDevice = function(db, deviceId){
         transactionId: rows[ct].transactionId,
         deviceId: rows[ct].deviceId,
         buffer: rows[ct].buffer,
-        time: rows[ct].time,
+        time: rows[ct].timeS && rows[ct].timeNs && [rows[ct].timeS, rows[ct].timeNs],
         outboundId: rows[ct].outboundId,
-        latency: rows[ct].latency
+        latency: rows[ct].latencyS && rows[ct].latencyNs && [rows[ct].latencyS, rows[ct].latencyNs]
       });
       output.push(inbound);
     }

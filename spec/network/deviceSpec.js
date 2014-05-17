@@ -25,15 +25,15 @@ describe('Device', function () {
     });
     db.when('select * from outbound where deviceId = ?', null, function (params) {
       var output = [
-        {outboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', time: 10.10},
-        {outboundId: 2, transactionId: 2, deviceId: 2, buffer: '1234561234567890', time: 11.10}
+        {outboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', timeS: 30, timeNs: 400},
+        {outboundId: 2, transactionId: 2, deviceId: 2, buffer: '1234561234567890', timeS: 20, timeNs: 400}
       ];
       return [output];
     });
     db.when('select * from inbound where deviceId = ?', null, function (params) {
       var output = [
-        {inboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', time: 10.20, outboundId: 1, latency: 0.1},
-        {inboundId: 2, transactionId: 2, deviceId: 2, buffer: '1234561234567890', time: 12.20, outboundId: 2, latency: 1.1}
+        {inboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', timeS: 40, timeNs: 500, outboundId: 1, latencyS: 10, latencyNs: 100},
+        {inboundId: 2, transactionId: 2, deviceId: 2, buffer: '1234561234567890', timeS: 50, timeNs: 600, outboundId: 2, latencyS: 30, latencyNs: 200}
       ];
       return [output];
     });
@@ -147,19 +147,18 @@ describe('Device', function () {
       device.loadTransactions(db);
 
       expect(device.outbound.length).toEqual(2);
-      expect(device.outbound[0]).toEqual(new Outbound({ outboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', time: 10.1 }));
+      expect(device.outbound[0]).toEqual(new Outbound({ outboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', time: [30, 400] }));
 
       expect(device.inbound.length).toEqual(2);
-      expect(device.inbound[0]).toEqual(new Inbound({ inboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', time: 10.2, outboundId: 1, latency: 0.1 }));
+      expect(device.inbound[0]).toEqual(new Inbound({ inboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', time: [40, 500], outboundId: 1, latency: [10, 100] }));
     });
   });
   describe('stampOutbound', function () {
     it('should create a new [Outbound] transaction, save it to the db, add it to [Outbound] list and increase [nextTransactionId]', function () {
-      var device = new Device({deviceId: 55, nextTransactionId: 3});
+      var device = new Device({deviceId: 55, nextTransactionId: 3, hrtime: Help.hrtime});
       db.expect('insert into outbound set ?', null, function (params) {
-        params[0].time = 111; //need to mock this
         expect(params).toEqual([
-          {transactionId: 3, deviceId: 55, buffer: '1234567890', time: 111}
+          {transactionId: 3, deviceId: 55, buffer: '1234567890', timeS: 100, timeNs: 2000}
         ]);
         var output = [];
         output.insertId = 12;
@@ -168,8 +167,7 @@ describe('Device', function () {
 
       device.stampOutbound(db, '1234567890');
       expect(device.outbound.length).toEqual(1);
-      device.outbound[0].time = 111; //need to mock this
-      expect(device.outbound[0]).toEqual(new Outbound({outboundId: 12, transactionId: 3, deviceId: 55, buffer: '1234567890', time: 111}));
+      expect(device.outbound[0]).toEqual(new Outbound({outboundId: 12, transactionId: 3, deviceId: 55, buffer: '1234567890', time: [100, 2000]}));
     });
     it('should push out old Transactions from a device to maintain the last 10', function () {
 

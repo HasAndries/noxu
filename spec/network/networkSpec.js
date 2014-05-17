@@ -6,25 +6,39 @@ var Instructions = require('../../network/enums').Instructions;
 describe('Network', function () {
   var db, network, nextDeviceId;
   beforeEach(function () {
+    nextDeviceId = 1;
     db = new Help.MockDb();
     db.when('select * from devices', null, function(params){
       //var output = [{deviceId:1, hardwareId: 4411, nextTransactionId: 1, confirmed}, {deviceId:2}];
       //return [output];
       return [[]];
     });
-    db.when('insert into devices set ?', null, function(params){
+    db.when('insert into devices set ?', null, function (params) {
       var output = [];
       output.insertId = nextDeviceId++;
       return [output];
     });
-    db.when('update devices set ? where deviceId = ?', null, function(params){
+    db.when('update devices set ? where deviceId = ?', null, function (params) {
       return [];
+    });
+    db.when('select * from outbound where deviceId = ?', null, function (params) {
+      var output = [
+        {outboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', timeS: 30, timeNs: 400},
+        {outboundId: 2, transactionId: 2, deviceId: 2, buffer: '1234561234567890', timeS: 20, timeNs: 400}
+      ];
+      return [output];
+    });
+    db.when('select * from inbound where deviceId = ?', null, function (params) {
+      var output = [
+        {inboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', timeS: 40, timeNs: 500, outboundId: 1, latencyS: 10, latencyNs: 100},
+        {inboundId: 2, transactionId: 2, deviceId: 2, buffer: '1234561234567890', timeS: 50, timeNs: 600, outboundId: 2, latencyS: 30, latencyNs: 200}
+      ];
+      return [output];
     });
 
     network = new Network({networkId: 99}, db);
     network.radio = new Help.MockRadio();
     network._startListen();
-    nextDeviceId = 1;
   });
   afterEach(function () {
     network._stopListen();
