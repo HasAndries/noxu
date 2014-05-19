@@ -7,6 +7,7 @@ var Message = require('./message');
 var Outbound = require('./outbound');
 var Inbound = require('./inbound');
 var Instructions = require('./enums').Instructions;
+require('./common');
 try {
   var RF24 = require('../rf24');
 }
@@ -144,7 +145,8 @@ Network.prototype.stop = function () {
  * @param {Message} obj - Message to be serialized and sent
  * @fires Network#outbound
  */
-Network.prototype.send = function (device, message) {
+Network.prototype.send = function (message, device) {
+  device = device || this._getDevice(message.deviceId);
   //stop inbound
   if (this.running) this._stopListen();
   if (device) message.transactionId = device.nextTransactionId;
@@ -153,7 +155,7 @@ Network.prototype.send = function (device, message) {
   if (this.radio) {
     this.radio.write(buffer);
   }
-  if (device) device.stampOutbound(this.db, buffer);
+  if (device) device.stampOutbound(this.db, buffer.toByteArray());
   this.emit('outbound', {device:device, buffer: buffer, message: message});
 
   //start inbound
@@ -201,16 +203,16 @@ Network.prototype._processInbound = function () {
       var data = this.radio.read();
       var buffer = new Buffer(this.config.bufferSize);
       buffer.fill(0);
-      data.copy(buffer);
+      data.copy(buffer);//todo: check for possible overflow
       var message = new Message({buffer: data, bufferSize: this.config.bufferSize});
       if (message.validate()) {
         var device = this._getDevice(message.deviceId);
-        if (device) device.stampInbound(this.db, buffer, time);
+        if (device) device.stampInbound(this.db, message.transactionId, buffer.toByteArray(), time);
         this.emit('inbound', {device:device, buffer: buffer, message: message});
         var inbound = this._process[message.instruction] || this._processGeneral;
         var outbound = inbound.bind(this)(message);
         if (outbound){
-          this.send(device, outbound);
+          this.send(outbound, device);
         }
       }
     }

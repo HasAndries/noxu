@@ -4,8 +4,9 @@ function Help() {
 
 }
 
+Help.hrtimeVal = [100,2000];
 Help.hrtime = function(){
-  return [100,2000];
+  return Help.hrtimeVal;
 };
 
 Help.random = function (min, max) {

@@ -1,3 +1,5 @@
+var Message = require('./message');
+
 function Outbound(options){
   options = options || {};
   this.outboundId = options.outboundId || null;
@@ -16,7 +18,7 @@ Outbound.loadForDevice = function(db, deviceId){
         outboundId: rows[ct].outboundId,
         transactionId: rows[ct].transactionId,
         deviceId: rows[ct].deviceId,
-        buffer: rows[ct].buffer,
+        buffer: JSON.parse(rows[ct].buffer),
         time: rows[ct].timeS && rows[ct].timeNs && [rows[ct].timeS, rows[ct].timeNs]
       });
       output.push(outbound);
@@ -28,7 +30,7 @@ Outbound.prototype.save = function(db, fields){
   var input = {
     transactionId: this.transactionId,
     deviceId: this.deviceId,
-    buffer: this.buffer,
+    buffer: JSON.stringify(this.buffer),
     timeS: this.time && this.time[0],
     timeNs: this.time && this.time[1]
   };
@@ -48,6 +50,9 @@ Outbound.prototype.save = function(db, fields){
       if (err) throw err;
     }.bind(this));
   }
+};
+Outbound.prototype.getMessage = function(){
+  return new Message({buffer: this.buffer});
 };
 
 module.exports = Outbound;

@@ -25,15 +25,15 @@ describe('Device', function () {
     });
     db.when('select * from outbound where deviceId = ?', null, function (params) {
       var output = [
-        {outboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', timeS: 30, timeNs: 400},
-        {outboundId: 2, transactionId: 2, deviceId: 2, buffer: '1234561234567890', timeS: 20, timeNs: 400}
+        {outboundId: 1, transactionId: 1, deviceId: 2, buffer: '[1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6]', timeS: 30, timeNs: 400},
+        {outboundId: 2, transactionId: 2, deviceId: 2, buffer: '[1,2,3,4,5,6,1,2,3,4,5,6,7,8,9,0]', timeS: 20, timeNs: 400}
       ];
       return [output];
     });
     db.when('select * from inbound where deviceId = ?', null, function (params) {
       var output = [
-        {inboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', timeS: 40, timeNs: 500, outboundId: 1, latencyS: 10, latencyNs: 100},
-        {inboundId: 2, transactionId: 2, deviceId: 2, buffer: '1234561234567890', timeS: 50, timeNs: 600, outboundId: 2, latencyS: 30, latencyNs: 200}
+        {inboundId: 1, transactionId: 1, deviceId: 2, buffer: '[1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6]', timeS: 40, timeNs: 500, outboundId: 1, latencyS: 10, latencyNs: 100},
+        {inboundId: 2, transactionId: 2, deviceId: 2, buffer: '[1,2,3,4,5,6,1,2,3,4,5,6,7,8,9,0]', timeS: 50, timeNs: 600, outboundId: 2, latencyS: 30, latencyNs: 200}
       ];
       return [output];
     });
@@ -147,10 +147,10 @@ describe('Device', function () {
       device.loadTransactions(db);
 
       expect(device.outbound.length).toEqual(2);
-      expect(device.outbound[0]).toEqual(new Outbound({ outboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', time: [30, 400] }));
+      expect(device.outbound[0]).toEqual(new Outbound({ outboundId: 1, transactionId: 1, deviceId: 2, buffer: [1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6], time: [30, 400] }));
 
       expect(device.inbound.length).toEqual(2);
-      expect(device.inbound[0]).toEqual(new Inbound({ inboundId: 1, transactionId: 1, deviceId: 2, buffer: '1234567890123456', time: [40, 500], outboundId: 1, latency: [10, 100] }));
+      expect(device.inbound[0]).toEqual(new Inbound({ inboundId: 1, transactionId: 1, deviceId: 2, buffer: [1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6], time: [40, 500], outboundId: 1, latency: [10, 100] }));
     });
   });
   describe('stampOutbound', function () {
@@ -158,16 +158,43 @@ describe('Device', function () {
       var device = new Device({deviceId: 55, nextTransactionId: 3, hrtime: Help.hrtime});
       db.expect('insert into outbound set ?', null, function (params) {
         expect(params).toEqual([
-          {transactionId: 3, deviceId: 55, buffer: '1234567890', timeS: 100, timeNs: 2000}
+          {transactionId: 3, deviceId: 55, buffer: '[1,2,3,4,5,6,7,8,9,0]', timeS: 100, timeNs: 2000}
         ]);
         var output = [];
         output.insertId = 12;
         return [output];
       });
 
-      device.stampOutbound(db, '1234567890');
+      device.stampOutbound(db, [1,2,3,4,5,6,7,8,9,0]);
       expect(device.outbound.length).toEqual(1);
-      expect(device.outbound[0]).toEqual(new Outbound({outboundId: 12, transactionId: 3, deviceId: 55, buffer: '1234567890', time: [100, 2000]}));
+      expect(device.outbound[0]).toEqual(new Outbound({outboundId: 12, transactionId: 3, deviceId: 55, buffer: [1,2,3,4,5,6,7,8,9,0], time: [100, 2000]}));
+      expect(device.nextTransactionId).toEqual(4);
+    });
+    it('should push out old Transactions from a device to maintain the last 10', function () {
+
+    });
+  });
+  describe('stampInbound', function () {
+    it('should create a new [Inbound] transaction, calculate the latency, save it to the db and add it to [Inbound] list', function () {
+      var device = new Device({deviceId: 55, nextTransactionId: 3, hrtime: Help.hrtime});
+      db.expect('insert into outbound set ?', null, function (params) {
+        var output = [];
+        output.insertId = 12;
+        return [output];
+      });
+      db.expect('insert into inbound set ?', null, function (params) {
+        expect(params).toEqual([
+          {transactionId: 3, deviceId: 55, buffer: '[0,9,8,7,6,5,4,3,2,1]', timeS: 102, timeNs: 1500, outboundId: 12, latency: 100000001000}
+        ]);
+        var output = [];
+        output.insertId = 33;
+        return [output];
+      });
+      Help.hrtimeVal = [100, 1000];
+      device.stampOutbound(db, [1,2,3,4,5,6,7,8,9,0]);
+      device.stampInbound(db, 3, [0,9,8,7,6,5,4,3,2,1], [102, 1500]);
+      expect(device.inbound.length).toEqual(1);
+      expect(device.inbound[0]).toEqual(new Inbound({inboundId: 33, transactionId: 3, deviceId: 55, buffer: [0,9,8,7,6,5,4,3,2,1], time: [102, 1500], outboundId: 12, latency: 100000001000}));
     });
     it('should push out old Transactions from a device to maintain the last 10', function () {
 
