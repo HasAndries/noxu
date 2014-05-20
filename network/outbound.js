@@ -8,10 +8,12 @@ function Outbound(options){
   this.buffer = options.buffer || null;
   this.time = options.time || null;
 }
+Outbound.loadLimit = 5;
 
-Outbound.loadForDevice = function(db, deviceId){
+Outbound.loadForDevice = function(db, deviceId, limit){
+  if (limit == null) limit = Outbound.loadLimit;
   var output = [];
-  db.query('select * from outbound where deviceId = ?', [deviceId], function(err, rows){
+  db.query('select * from outbound where deviceId = ? limit ?', [deviceId, limit], function(err, rows){
     if (err) throw err;
     for(var ct=0;ct<rows.length;ct++){
       var outbound = new Outbound({

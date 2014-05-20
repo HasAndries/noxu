@@ -23,7 +23,7 @@ describe('Network', function () {
     db.when('update devices set ? where deviceId = ?', null, function (params) {
       return [];
     });
-    db.when('select * from outbound where deviceId = ?', null, function (params) {
+    db.when('select * from outbound where deviceId = ? limit ?', null, function (params) {
       var output = [
         {outboundId: 1, transactionId: 1, deviceId: 2, buffer: '[2, 122, 129, 73, 61, 13, 2, 64, 5, 2, 4, 9, 0, 0, 0, 0]', timeS: 30, timeNs: 400},
         {outboundId: 2, transactionId: 2, deviceId: 2, buffer: '[2, 122, 129, 73, 61, 13, 2, 64, 5, 2, 4, 9, 0, 0, 0, 0]', timeS: 20, timeNs: 400}
@@ -35,7 +35,7 @@ describe('Network', function () {
       output.insertId = nextOuboundId++;
       return [output];
     });
-    db.when('select * from inbound where deviceId = ?', null, function (params) {
+    db.when('select * from inbound where deviceId = ? limit ?', null, function (params) {
       var output = [
         {inboundId: 1, transactionId: 1, deviceId: 2, buffer: '[2, 122, 129, 73, 61, 13, 3, 64, 5, 2, 4, 9, 0, 0, 0, 0]', timeS: 40, timeNs: 500, outboundId: 1, latencyS: 10, latencyNs: 100},
         {inboundId: 2, transactionId: 2, deviceId: 2, buffer: '[2, 122, 129, 73, 61, 13, 3, 64, 5, 2, 4, 9, 0, 0, 0, 0]', timeS: 50, timeNs: 600, outboundId: 2, latencyS: 30, latencyNs: 200}

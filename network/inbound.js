@@ -10,10 +10,12 @@ function Inbound(options){
   this.outboundId = options.outboundId || null;
   this.latency = options.latency || null;
 }
+Inbound.loadLimit = 5;
 
-Inbound.loadForDevice = function(db, deviceId){
+Inbound.loadForDevice = function(db, deviceId, limit){
+  if (limit == null) limit = Inbound.loadLimit;
   var output = [];
-  db.query('select * from inbound where deviceId = ?', [deviceId], function(err, rows){
+  db.query('select * from inbound where deviceId = ? limit ?', [deviceId, limit], function(err, rows){
     if (err) throw err;
     for(var ct=0;ct<rows.length;ct++){
       var inbound = new Inbound({
