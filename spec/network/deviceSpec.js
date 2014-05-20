@@ -4,9 +4,11 @@ var Outbound = require('../../network/outbound');
 var Inbound = require('../../network/inbound');
 
 describe('Device', function () {
-  var db, nextDeviceId;
+  var db, nextDeviceId, nextOutboundId, nextInboundId;
   beforeEach(function () {
     nextDeviceId = 1;
+    nextOutboundId = 1;
+    nextInboundId = 1;
     db = new Help.MockDb();
     db.when('select * from devices', null, function (params) {
       var output = [
@@ -30,11 +32,21 @@ describe('Device', function () {
       ];
       return [output];
     });
+    db.when('insert into outbound set ?', null, function (params) {
+      var output = [];
+      output.insertId = nextOutboundId++;
+      return [output];
+    });
     db.when('select * from inbound where deviceId = ?', null, function (params) {
       var output = [
         {inboundId: 1, transactionId: 1, deviceId: 2, buffer: '[1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6]', timeS: 40, timeNs: 500, outboundId: 1, latencyS: 10, latencyNs: 100},
         {inboundId: 2, transactionId: 2, deviceId: 2, buffer: '[1,2,3,4,5,6,1,2,3,4,5,6,7,8,9,0]', timeS: 50, timeNs: 600, outboundId: 2, latencyS: 30, latencyNs: 200}
       ];
+      return [output];
+    });
+    db.when('insert into inbound set ?', null, function (params) {
+      var output = [];
+      output.insertId = nextInboundId++;
       return [output];
     });
   });
@@ -170,8 +182,20 @@ describe('Device', function () {
       expect(device.outbound[0]).toEqual(new Outbound({outboundId: 12, transactionId: 3, deviceId: 55, buffer: [1,2,3,4,5,6,7,8,9,0], time: [100, 2000]}));
       expect(device.nextTransactionId).toEqual(4);
     });
-    it('should push out old Transactions from a device to maintain the last 10', function () {
-
+    it('should push out old outbound items to maintain only the max outbound amount', function () {
+      var device = new Device({deviceId: 55, hrtime: Help.hrtime, maxOutbound: 3});
+      Help.hrtimeVal = [1,1];
+      device.stampOutbound(db, [1,2,3,4,5,6,7,8,9,0]);
+      Help.hrtimeVal = [2,2];
+      device.stampOutbound(db, [1,2,3,4,5,6,7,8,9,0]);
+      Help.hrtimeVal = [3,3];
+      device.stampOutbound(db, [1,2,3,4,5,6,7,8,9,0]);
+      expect(device.outbound.length).toEqual(3);
+      Help.hrtimeVal = [4,4];
+      device.stampOutbound(db, [1,2,3,4,5,6,7,8,9,0]);
+      expect(device.outbound.length).toEqual(3);
+      expect(device.outbound[0].time).toEqual([2,2]);
+      expect(device.outbound[2].time).toEqual([4,4]);
     });
   });
   describe('stampInbound', function () {
@@ -196,8 +220,16 @@ describe('Device', function () {
       expect(device.inbound.length).toEqual(1);
       expect(device.inbound[0]).toEqual(new Inbound({inboundId: 33, transactionId: 3, deviceId: 55, buffer: [0,9,8,7,6,5,4,3,2,1], time: [102, 1500], outboundId: 12, latency: 100000001000}));
     });
-    it('should push out old Transactions from a device to maintain the last 10', function () {
-
+    it('should push out old outbound items to maintain only the max outbound amount', function () {
+      var device = new Device({deviceId: 55, maxInbound: 3});
+      device.stampInbound(db, 1, [1,2,3,4,5,6,7,8,9,0], [1,1]);
+      device.stampInbound(db, 2, [1,2,3,4,5,6,7,8,9,0], [2,2]);
+      device.stampInbound(db, 3, [1,2,3,4,5,6,7,8,9,0], [3,3]);
+      expect(device.inbound.length).toEqual(3);
+      device.stampInbound(db, 4, [1,2,3,4,5,6,7,8,9,0], [4,4]);
+      expect(device.inbound.length).toEqual(3);
+      expect(device.inbound[0].time).toEqual([2,2]);
+      expect(device.inbound[2].time).toEqual([4,4]);
     });
   });
 });

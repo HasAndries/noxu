@@ -5,11 +5,13 @@ function Device(options){
   options = options || {};
   this.deviceId = options.deviceId || null;
   this.hardwareId = options.hardwareId || null;
-  this.nextTransactionId = options.nextTransactionId || 0;
+  this.nextTransactionId = typeof options.nextTransactionId == 'undefined' ? 0 : options.nextTransactionId;
   this.confirmed = options.confirmed || 0;
   this.outbound = options.outbound || [];
   this.inbound = options.inbound || [];
   this.hrtime = options.hrtime || process.hrtime;
+  this.maxOutbound = options.maxOutbound || 5;
+  this.maxInbound = options.maxInbound || 5;
 }
 
 Device.loadAll = function(db){
@@ -60,9 +62,9 @@ Device.prototype.stampOutbound = function(db, buffer){
   var outbound = new Outbound({transactionId: this.nextTransactionId, deviceId: this.deviceId, buffer:buffer, time:this.hrtime()});
   outbound.save(db);
   this.outbound.push(outbound);
+  if (this.outbound.length > this.maxOutbound) this.outbound.splice(0, this.outbound.length - this.maxOutbound);
   this.nextTransactionId++;
   this.save(db, ['nextTransactionId']);
-
 };
 Device.prototype.stampInbound = function(db, transactionId, buffer, time){
   var inbound = new Inbound({transactionId: transactionId, deviceId: this.deviceId, buffer:buffer, time:time});
@@ -77,6 +79,7 @@ Device.prototype.stampInbound = function(db, transactionId, buffer, time){
   }
   inbound.save(db);
   this.inbound.push(inbound);
+  if (this.inbound.length > this.maxInbound) this.inbound.splice(0, this.inbound.length - this.maxInbound);
 };
 
 module.exports = Device;
