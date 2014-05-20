@@ -11,8 +11,6 @@ describe('Network', function () {
     nextInboundId = 1;
     db = new Help.MockDb();
     db.when('select * from devices', null, function(params){
-      //var output = [{deviceId:1, hardwareId: 4411, nextTransactionId: 1, confirmed}, {deviceId:2}];
-      //return [output];
       return [[]];
     });
     db.when('insert into devices set ?', null, function (params) {
@@ -230,9 +228,9 @@ describe('Network', function () {
         expect(device.nextTransactionId).toEqual(3);
         expect(device.confirmed).toEqual(1);
       });
-      it('should raise event [deviceConfirmInvalid] and send [NETWORK_INVALID] for an invalid Device', function (done) {
+      it('should raise event [deviceInvalid] and send [NETWORK_INVALID] for an invalid Device', function (done) {
         //event
-        network.on('deviceConfirmInvalid', function (input) {
+        network.on('deviceInvalid', function (input) {
           expect(input.deviceId).toEqual(1);
           done();
         });

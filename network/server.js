@@ -1,6 +1,7 @@
 var io = require('socket.io');
 var mysql = require('mysql');
 var Network = require('./network');
+var util = require('util');
 
 function Server(config) {
   var _this = this;
@@ -16,9 +17,13 @@ function Server(config) {
   this.network = network;
   network.on('outbound', this.notify('outbound'));
   network.on('inbound', this.notify('inbound'));
-  network.on('reservationNew', this.notify('reservationNew'));
-  network.on('deviceNew', this.notify('deviceNew'));
+  network.on('deviceInvalid', this.notify('deviceInvalid'));
+  network.on('deviceConnectNew', this.notify('deviceConnectNew'));
+  network.on('deviceConnectExisting', this.notify('deviceConnectExisting'));
+  network.on('deviceConfirmNew', this.notify('deviceConfirmNew'));
+  network.on('deviceConfirmExisting', this.notify('deviceConfirmExisting'));
   network.on('pingConfirm', this.notify('pingConfirm'));
+  network.on('deviceNextMessage', this.notify('deviceNextMessage'));
 
   //Message Map
   this.messageMap = {
@@ -45,7 +50,7 @@ Server.prototype.notify = function (name, socket) {
   var _this = this;
   return function (obj) {
     (socket || _this.io.sockets).emit(name, obj);
-    console.log('Notify: %s - %s', name, JSON.stringify(obj));
+    console.log('=== %s %s', name, util.inspect(obj));
   }
 }
 Server.prototype.respond = function(socket, key, func){

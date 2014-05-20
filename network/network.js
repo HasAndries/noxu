@@ -18,35 +18,41 @@ catch (ex) {
 /**
  * @event Network#outbound
  * @type {object}
+ * @property {object} device - Device that the message is for
  * @property {Buffer} buffer - Buffer sent to radio
  * @property {Message} message - Message serialized
  */
 /**
  * @event Network#inbound
  * @type {object}
+ * @property {object} device - Device that the message is for
  * @property {Buffer} buffer - Buffer received from radio
  * @property {Message} message - Message de-serialized
- */
-/**
- * @event Network#reservationNew
- * @type {object}
- * @property {object} reservation - Reservation added
- */
-/**
- * @event Network#reservationInvalid
- * @type {object}
- * @property {int} deviceId - The DeviceId that is invalid
- * @property {int} hardwareId - The hardwareId that is invalid
- */
-/**
- * @event Network#deviceNew
- * @type {object}
- * @property {object} device - Device added
  */
 /**
  * @event Network#deviceInvalid
  * @type {object}
  * @property {int} deviceId - The DeviceId that is invalid
+ */
+/**
+ * @event Network#deviceConnectNew
+ * @type {object}
+ * @property {object} device - New Device that connected
+ */
+/**
+ * @event Network#deviceConnectExisting
+ * @type {object}
+ * @property {object} device - Existing Device that connected
+ */
+/**
+ * @event Network#deviceConfirmNew
+ * @type {object}
+ * @property {object} device - New Device that was confirmed
+ */
+/**
+ * @event Network#deviceConfirmExisting
+ * @type {object}
+ * @property {object} device - Existing Device was confirmed
  */
 /**
  * @event Network#pingConfirm
@@ -254,7 +260,7 @@ Network.prototype._process[Instructions.NETWORK_CONFIRM] = function(message){
   var device = this._getDevice(message.deviceId);
   var outbound;
   if (!device) {
-    this.emit('deviceConfirmInvalid', {deviceId: message.deviceId});
+    this.emit('deviceInvalid', {deviceId: message.deviceId});
     outbound = new Message({data: message.data, instruction: Instructions.NETWORK_INVALID});
   }
   else {

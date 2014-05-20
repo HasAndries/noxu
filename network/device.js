@@ -38,13 +38,20 @@ Device.prototype.save = function(db, fields){
       if (fields.indexOf(key) == -1) delete input[key];
     }
   }
+  console.log('device');
+  console.log(input);
   if (!this.deviceId){ //insert new
-    db.query('insert into devices set ?', [input], function(err, rows){
+    console.log('insert');
+    var query = db.query('insert into devices set ?', input, function(err, rows){
+      console.log(err);
+      console.log(rows);
       if (err) throw err;
       this.deviceId = rows.insertId;
     }.bind(this));
+    console.log(query);
   }
   else{ //update existing
+    console.log('update');
     db.query('update devices set ? where deviceId = ?',[input, this.deviceId], function(err, rows){
       if (err) throw err;
     }.bind(this));
