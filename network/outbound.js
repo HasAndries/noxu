@@ -42,7 +42,7 @@ Outbound.prototype.save = function(db, fields){
     }
   }
   if (!this.outboundId){ //insert new
-    db.query('insert into outbound set ?', [input], function(err, rows){
+    db.query('insert into outbound set ?', input, function(err, rows){
       if (err) throw err;
       this.outboundId = rows.insertId;
     }.bind(this));

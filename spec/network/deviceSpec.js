@@ -105,9 +105,7 @@ describe('Device', function () {
     it('should insert a new Device and assign [deviceId]', function () {
       var device = new Device({hardwareId: 32, nextTransactionId: 7, confirmed: 1});
       db.expect('insert into devices set ?', null, function (params) {
-        expect(params).toEqual([
-          {hardwareId: 32, nextTransactionId: 7, confirmed: 1}
-        ]);
+        expect(params).toEqual({hardwareId: 32, nextTransactionId: 7, confirmed: 1});
         var output = [];
         output.insertId = 78;
         return [output];
@@ -169,9 +167,7 @@ describe('Device', function () {
     it('should create a new [Outbound] transaction, save it to the db, add it to [Outbound] list and increase [nextTransactionId]', function () {
       var device = new Device({deviceId: 55, nextTransactionId: 3, hrtime: Help.hrtime});
       db.expect('insert into outbound set ?', null, function (params) {
-        expect(params).toEqual([
-          {transactionId: 3, deviceId: 55, buffer: '[1,2,3,4,5,6,7,8,9,0]', timeS: 100, timeNs: 2000}
-        ]);
+        expect(params).toEqual({transactionId: 3, deviceId: 55, buffer: '[1,2,3,4,5,6,7,8,9,0]', timeS: 100, timeNs: 2000});
         var output = [];
         output.insertId = 12;
         return [output];
@@ -207,9 +203,7 @@ describe('Device', function () {
         return [output];
       });
       db.expect('insert into inbound set ?', null, function (params) {
-        expect(params).toEqual([
-          {transactionId: 3, deviceId: 55, buffer: '[0,9,8,7,6,5,4,3,2,1]', timeS: 102, timeNs: 1500, outboundId: 12, latency: 100000001000}
-        ]);
+        expect(params).toEqual({transactionId: 3, deviceId: 55, buffer: '[0,9,8,7,6,5,4,3,2,1]', timeS: 102, timeNs: 1500, outboundId: 12, latency: 100000001000});
         var output = [];
         output.insertId = 33;
         return [output];

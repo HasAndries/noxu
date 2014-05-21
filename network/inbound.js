@@ -48,7 +48,7 @@ Inbound.prototype.save = function(db, fields){
     }
   }
   if (!this.inboundId){ //insert new
-    db.query('insert into inbound set ?', [input], function(err, rows){
+    db.query('insert into inbound set ?', input, function(err, rows){
       if (err) throw err;
       this.inboundId = rows.insertId;
     }.bind(this));
