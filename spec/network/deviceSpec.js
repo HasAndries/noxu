@@ -84,18 +84,19 @@ describe('Device', function () {
         return [output];
       });
 
-      var devices = Device.loadAll(db);
-      expect(devices.length).toEqual(2);
-      //0
-      expect(devices[0].deviceId).toEqual(1);
-      expect(devices[0].hardwareId).toEqual(4411);
-      expect(devices[0].nextTransactionId).toEqual(1);
-      expect(devices[0].confirmed).toEqual(0);
-      //1
-      expect(devices[1].deviceId).toEqual(3);
-      expect(devices[1].hardwareId).toEqual(4412);
-      expect(devices[1].nextTransactionId).toEqual(4);
-      expect(devices[1].confirmed).toEqual(1);
+      Device.loadAll(db).then(function (devices) {
+        expect(devices.length).toEqual(2);
+        //0
+        expect(devices[0].deviceId).toEqual(1);
+        expect(devices[0].hardwareId).toEqual(4411);
+        expect(devices[0].nextTransactionId).toEqual(1);
+        expect(devices[0].confirmed).toEqual(0);
+        //1
+        expect(devices[1].deviceId).toEqual(3);
+        expect(devices[1].hardwareId).toEqual(4412);
+        expect(devices[1].nextTransactionId).toEqual(4);
+        expect(devices[1].confirmed).toEqual(1);
+      });
     });
     it('should load the last 10 Transactions for all devices', function () {
 
@@ -154,13 +155,13 @@ describe('Device', function () {
   describe('loadTransactions', function () {
     it('should load all Transactions for a device', function () {
       var device = new Device({deviceId: 55});
-      device.loadTransactions(db);
+      device.loadTransactions(db).then(function() {
+        expect(device.outbound.length).toEqual(2);
+        expect(device.outbound[0]).toEqual(new Outbound({ outboundId: 1, transactionId: 1, deviceId: 2, buffer: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6], time: [30, 400] }));
 
-      expect(device.outbound.length).toEqual(2);
-      expect(device.outbound[0]).toEqual(new Outbound({ outboundId: 1, transactionId: 1, deviceId: 2, buffer: [1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6], time: [30, 400] }));
-
-      expect(device.inbound.length).toEqual(2);
-      expect(device.inbound[0]).toEqual(new Inbound({ inboundId: 1, transactionId: 1, deviceId: 2, buffer: [1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6], time: [40, 500], outboundId: 1, latency: [10, 100] }));
+        expect(device.inbound.length).toEqual(2);
+        expect(device.inbound[0]).toEqual(new Inbound({ inboundId: 1, transactionId: 1, deviceId: 2, buffer: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6], time: [40, 500], outboundId: 1, latency: [10, 100] }));
+      });
     });
   });
   describe('stampOutbound', function () {
@@ -173,25 +174,25 @@ describe('Device', function () {
         return [output];
       });
 
-      device.stampOutbound(db, [1,2,3,4,5,6,7,8,9,0]);
+      device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
       expect(device.outbound.length).toEqual(1);
-      expect(device.outbound[0]).toEqual(new Outbound({outboundId: 12, transactionId: 3, deviceId: 55, buffer: [1,2,3,4,5,6,7,8,9,0], time: [100, 2000]}));
+      expect(device.outbound[0]).toEqual(new Outbound({outboundId: 12, transactionId: 3, deviceId: 55, buffer: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], time: [100, 2000]}));
       expect(device.nextTransactionId).toEqual(4);
     });
     it('should push out old outbound items to maintain only the max outbound amount', function () {
       var device = new Device({deviceId: 55, hrtime: Help.hrtime, maxOutbound: 3});
-      Help.hrtimeVal = [1,1];
-      device.stampOutbound(db, [1,2,3,4,5,6,7,8,9,0]);
-      Help.hrtimeVal = [2,2];
-      device.stampOutbound(db, [1,2,3,4,5,6,7,8,9,0]);
-      Help.hrtimeVal = [3,3];
-      device.stampOutbound(db, [1,2,3,4,5,6,7,8,9,0]);
+      Help.hrtimeVal = [1, 1];
+      device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
+      Help.hrtimeVal = [2, 2];
+      device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
+      Help.hrtimeVal = [3, 3];
+      device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
       expect(device.outbound.length).toEqual(3);
-      Help.hrtimeVal = [4,4];
-      device.stampOutbound(db, [1,2,3,4,5,6,7,8,9,0]);
+      Help.hrtimeVal = [4, 4];
+      device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
       expect(device.outbound.length).toEqual(3);
-      expect(device.outbound[0].time).toEqual([2,2]);
-      expect(device.outbound[2].time).toEqual([4,4]);
+      expect(device.outbound[0].time).toEqual([2, 2]);
+      expect(device.outbound[2].time).toEqual([4, 4]);
     });
   });
   describe('stampInbound', function () {
@@ -209,21 +210,21 @@ describe('Device', function () {
         return [output];
       });
       Help.hrtimeVal = [100, 1000];
-      device.stampOutbound(db, [1,2,3,4,5,6,7,8,9,0]);
-      device.stampInbound(db, 3, [0,9,8,7,6,5,4,3,2,1], [102, 1500]);
+      device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
+      device.stampInbound(db, 3, [0, 9, 8, 7, 6, 5, 4, 3, 2, 1], [102, 1500]);
       expect(device.inbound.length).toEqual(1);
-      expect(device.inbound[0]).toEqual(new Inbound({inboundId: 33, transactionId: 3, deviceId: 55, buffer: [0,9,8,7,6,5,4,3,2,1], time: [102, 1500], outboundId: 12, latency: 100000001000}));
+      expect(device.inbound[0]).toEqual(new Inbound({inboundId: 33, transactionId: 3, deviceId: 55, buffer: [0, 9, 8, 7, 6, 5, 4, 3, 2, 1], time: [102, 1500], outboundId: 12, latency: 100000001000}));
     });
     it('should push out old outbound items to maintain only the max outbound amount', function () {
       var device = new Device({deviceId: 55, maxInbound: 3});
-      device.stampInbound(db, 1, [1,2,3,4,5,6,7,8,9,0], [1,1]);
-      device.stampInbound(db, 2, [1,2,3,4,5,6,7,8,9,0], [2,2]);
-      device.stampInbound(db, 3, [1,2,3,4,5,6,7,8,9,0], [3,3]);
+      device.stampInbound(db, 1, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], [1, 1]);
+      device.stampInbound(db, 2, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], [2, 2]);
+      device.stampInbound(db, 3, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], [3, 3]);
       expect(device.inbound.length).toEqual(3);
-      device.stampInbound(db, 4, [1,2,3,4,5,6,7,8,9,0], [4,4]);
+      device.stampInbound(db, 4, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], [4, 4]);
       expect(device.inbound.length).toEqual(3);
-      expect(device.inbound[0].time).toEqual([2,2]);
-      expect(device.inbound[2].time).toEqual([4,4]);
+      expect(device.inbound[0].time).toEqual([2, 2]);
+      expect(device.inbound[2].time).toEqual([4, 4]);
     });
   });
 });

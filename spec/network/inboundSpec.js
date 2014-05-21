@@ -56,24 +56,25 @@ describe('Inbound', function () {
         return [output];
       });
 
-      var inbound = Inbound.loadForDevice(db, 2);
-      expect(inbound.length).toEqual(2);
-      //0
-      expect(inbound[0].inboundId).toEqual(1);
-      expect(inbound[0].transactionId).toEqual(1);
-      expect(inbound[0].deviceId).toEqual(2);
-      expect(inbound[0].buffer).toEqual([1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6]);
-      expect(inbound[0].time).toEqual([40, 500]);
-      expect(inbound[0].outboundId).toEqual(1);
-      expect(inbound[0].latency).toEqual([10,100]);
-      //1
-      expect(inbound[1].inboundId).toEqual(2);
-      expect(inbound[1].transactionId).toEqual(2);
-      expect(inbound[1].deviceId).toEqual(2);
-      expect(inbound[1].buffer).toEqual([1,2,3,4,5,6,1,2,3,4,5,6,7,8,9,0]);
-      expect(inbound[1].time).toEqual([50, 600]);
-      expect(inbound[1].outboundId).toEqual(2);
-      expect(inbound[1].latency).toEqual([30,200]);
+      Inbound.loadForDevice(db, 2).then(function(inbound) {
+        expect(inbound.length).toEqual(2);
+        //0
+        expect(inbound[0].inboundId).toEqual(1);
+        expect(inbound[0].transactionId).toEqual(1);
+        expect(inbound[0].deviceId).toEqual(2);
+        expect(inbound[0].buffer).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6]);
+        expect(inbound[0].time).toEqual([40, 500]);
+        expect(inbound[0].outboundId).toEqual(1);
+        expect(inbound[0].latency).toEqual([10, 100]);
+        //1
+        expect(inbound[1].inboundId).toEqual(2);
+        expect(inbound[1].transactionId).toEqual(2);
+        expect(inbound[1].deviceId).toEqual(2);
+        expect(inbound[1].buffer).toEqual([1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
+        expect(inbound[1].time).toEqual([50, 600]);
+        expect(inbound[1].outboundId).toEqual(2);
+        expect(inbound[1].latency).toEqual([30, 200]);
+      });
     });
     it('should load the last x Inbounds for all devices', function () {
       var count = 5;

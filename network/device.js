@@ -1,3 +1,4 @@
+var Q = require('q');
 var Outbound = require('./outbound');
 var Inbound = require('./inbound');
 
@@ -15,19 +16,23 @@ function Device(options){
 }
 
 Device.loadAll = function(db){
+  var deferred = Q.defer();
   var output = [];
   //console.log(db.config.connectionConfig.database);
+  var sequence = Promise.resolve();
   db.query('select * from devices', function(err, rows){
     if (err) throw err;
     for(var ct=0;ct<rows.length;ct++){
       var device = new Device({deviceId: rows[ct].deviceId, hardwareId: rows[ct].hardwareId, nextTransactionId: rows[ct].nextTransactionId, confirmed: rows[ct].confirmed});
-      device.loadTransactions(db);
       output.push(device);
+      sequence = sequence.then(device.loadTransactions(db));
     }
+    sequence.then(resolve(output));
   });
-  return output;
+  return deferred.promise;
 };
 Device.prototype.save = function(db, fields){
+  var deferred = Q.defer();
   var input = {
     hardwareId: this.hardwareId,
     nextTransactionId: this.nextTransactionId,
@@ -40,23 +45,33 @@ Device.prototype.save = function(db, fields){
   }
   if (!this.deviceId){ //insert new
     db.query('insert into devices set ?', input, function(err, rows){
-      if (err) throw err;
+      if (err) reject(err);
       this.deviceId = rows.insertId;
+      deferred.resolve(this);
     }.bind(this));
   }
   else{ //update existing
     db.query('update devices set ? where deviceId = ?',[input, this.deviceId], function(err, rows){
-      if (err) throw err;
+      if (err) reject(err);
+      deferred.resolve(this);
     }.bind(this));
   }
+  return deferred.promise;
 };
 Device.prototype.confirm = function(db){
+  var deferred = Q.defer();
   this.confirmed = 1;
-  this.save(db);
+  this.save(db).then(deferred.resolve, deferred.reject);
+  return deferred.promise;
 };
 Device.prototype.loadTransactions = function(db){
-  this.outbound = Outbound.loadForDevice(db, this.deviceId);
-  this.inbound = Inbound.loadForDevice(db, this.deviceId);
+  var deferred = Q.defer();
+  Q.all([Outbound.loadForDevice(db, this.deviceId), Inbound.loadForDevice(db, this.deviceId)]).then(function(output){
+    this.outbound = output[0];
+    this.inbound = output[1];
+    deferred.resolve(this);
+  }, reject);
+  return deferred.promise;
 };
 Device.prototype.stampOutbound = function(db, buffer){
   var outbound = new Outbound({transactionId: this.nextTransactionId, deviceId: this.deviceId, buffer:buffer, time:this.hrtime()});

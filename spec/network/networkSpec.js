@@ -66,6 +66,7 @@ describe('Network', function () {
 
       var network = new Network({networkId: 99}, db);
 
+      console.log()
       expect(network.devices.length).toEqual(2);
     });
   });
@@ -100,6 +101,7 @@ describe('Network', function () {
         //setup
         var hardwareId = Help.random(1, 10000);
         var device = NETWORK_CONNECT(network, hardwareId);
+        console.log(network.devices);
 
         expect(network.devices.length).toEqual(1);
         expect(network.devices[0]).toEqual(device);

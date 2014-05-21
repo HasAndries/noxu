@@ -17,7 +17,8 @@
     "whet.extend": "0.9.x",
     "fibers": "1.x",
     "node.extend": "1.x",
-    "mysql": "2.x"
+    "mysql": "2.x",
+    "q": "1.x"
   },
   "devDependencies":{
     "grunt": "0.4.x",

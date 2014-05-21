@@ -1,3 +1,4 @@
+var Q = require('q');
 var Message = require('./message');
 
 function Inbound(options){
@@ -13,11 +14,12 @@ function Inbound(options){
 Inbound.loadLimit = 5;
 
 Inbound.loadForDevice = function(db, deviceId, limit){
+  var deferred = Q.defer();
   if (limit == null) limit = Inbound.loadLimit;
   var output = [];
-  db.query('select * from inbound where deviceId = ? limit ?', [deviceId, limit], function(err, rows){
+  db.query('select * from inbound where deviceId = ? limit ?', [deviceId, limit], function (err, rows) {
     if (err) throw err;
-    for(var ct=0;ct<rows.length;ct++){
+    for (var ct = 0; ct < rows.length; ct++) {
       var inbound = new Inbound({
         inboundId: rows[ct].inboundId,
         transactionId: rows[ct].transactionId,
@@ -29,10 +31,12 @@ Inbound.loadForDevice = function(db, deviceId, limit){
       });
       output.push(inbound);
     }
+    deferred.resolve(output);
   });
-  return output;
+  return deferred.promise;
 };
 Inbound.prototype.save = function(db, fields){
+  var deferred = Q.defer();
   var input = {
     transactionId: this.transactionId,
     deviceId: this.deviceId,
@@ -42,22 +46,25 @@ Inbound.prototype.save = function(db, fields){
     outboundId: this.outboundId,
     latency: this.latency
   };
-  if (fields){
-    for(var key in input){
+  if (fields) {
+    for (var key in input) {
       if (fields.indexOf(key) == -1) delete input[key];
     }
   }
-  if (!this.inboundId){ //insert new
-    db.query('insert into inbound set ?', input, function(err, rows){
+  if (!this.inboundId) { //insert new
+    db.query('insert into inbound set ?', input, function (err, rows) {
       if (err) throw err;
       this.inboundId = rows.insertId;
+      deferred.resolve(this);
     }.bind(this));
   }
-  else{ //update existing
-    db.query('update inbound set ? where inboundId = ?',[input, this.inboundId], function(err, rows){
+  else { //update existing
+    db.query('update inbound set ? where inboundId = ?', [input, this.inboundId], function (err, rows) {
       if (err) throw err;
+      deferred.resolve(this);
     }.bind(this));
   }
+  return deferred.promise;
 };
 Inbound.prototype.getMessage = function(){
   return new Message({buffer: this.buffer});

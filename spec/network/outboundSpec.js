@@ -52,20 +52,21 @@ describe('Outbound', function () {
         return [output];
       });
 
-      var outbound = Outbound.loadForDevice(db, 2);
-      expect(outbound.length).toEqual(2);
-      //0
-      expect(outbound[0].outboundId).toEqual(1);
-      expect(outbound[0].transactionId).toEqual(1);
-      expect(outbound[0].deviceId).toEqual(2);
-      expect(outbound[0].buffer).toEqual([1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6]);
-      expect(outbound[0].time).toEqual([30, 400]);
-      //1
-      expect(outbound[1].outboundId).toEqual(2);
-      expect(outbound[1].transactionId).toEqual(2);
-      expect(outbound[1].deviceId).toEqual(2);
-      expect(outbound[1].buffer).toEqual([1,2,3,4,5,6,1,2,3,4,5,6,7,8,9,0]);
-      expect(outbound[1].time).toEqual([20, 400]);
+      Outbound.loadForDevice(db, 2).then(function(outbound){
+        expect(outbound.length).toEqual(2);
+        //0
+        expect(outbound[0].outboundId).toEqual(1);
+        expect(outbound[0].transactionId).toEqual(1);
+        expect(outbound[0].deviceId).toEqual(2);
+        expect(outbound[0].buffer).toEqual([1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6]);
+        expect(outbound[0].time).toEqual([30, 400]);
+        //1
+        expect(outbound[1].outboundId).toEqual(2);
+        expect(outbound[1].transactionId).toEqual(2);
+        expect(outbound[1].deviceId).toEqual(2);
+        expect(outbound[1].buffer).toEqual([1,2,3,4,5,6,1,2,3,4,5,6,7,8,9,0]);
+        expect(outbound[1].time).toEqual([20, 400]);
+      });
     });
     it('should load the last x Outbounds for all devices', function () {
       var count = 5;
