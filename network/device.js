@@ -19,7 +19,7 @@ Device.loadAll = function(db){
   var deferred = Q.defer();
   var output = [];
   //console.log(db.config.connectionConfig.database);
-  var sequence = Promise.resolve();
+  var sequence = Q();
   db.query('select * from devices', function(err, rows){
     if (err) throw err;
     for(var ct=0;ct<rows.length;ct++){
@@ -27,7 +27,7 @@ Device.loadAll = function(db){
       output.push(device);
       sequence = sequence.then(device.loadTransactions(db));
     }
-    sequence.then(resolve(output));
+    sequence.then(deferred.resolve(output));
   });
   return deferred.promise;
 };
@@ -70,7 +70,7 @@ Device.prototype.loadTransactions = function(db){
     this.outbound = output[0];
     this.inbound = output[1];
     deferred.resolve(this);
-  }, reject);
+  }, deferred.reject);
   return deferred.promise;
 };
 Device.prototype.stampOutbound = function(db, buffer){

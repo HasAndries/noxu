@@ -101,7 +101,18 @@ function Network(config, db) {
   };
   extend(this.config, config || {});
   this.db = db;
+  this.devices = [];
+}
+util.inherits(Network, EventEmitter);
+Network.prototype._process = [];//for inbound processing functions
 
+//========== PUBLIC ==========
+/**
+ * Initializes the Radio and loads devices
+ * @returns {Promise.promise|*}
+ */
+Network.prototype.init = function () {
+  var deferred = Q.defer();
   //setup rf device
   if (RF24) {
     var radio = new RF24(config.spiDev, config.pinCe);
@@ -120,15 +131,14 @@ function Network(config, db) {
     radio.openWritingPipe(this.config.outboundAddress);
     radio.printDetails();
   }
-
-  Device.loadAll(this.db).then(function(devices){
+  //Load devices
+  Device.loadAll(this.db).then(function (devices) {
     this.devices = devices;
-  });
-}
-util.inherits(Network, EventEmitter);
-Network.prototype._process = [];//for inbound processing functions
+    deferred.resolve(this);
+  }, deferred.reject);
+  return deferred.promise;
+};
 
-//========== PUBLIC ==========
 /**
  * Starts inbound processing
  */
@@ -165,7 +175,7 @@ Network.prototype.send = function (message, device) {
     this.radio.write(buffer);
   }
   if (device) device.stampOutbound(this.db, buffer.toByteArray());
-  this.emit('outbound', {device:device, buffer: buffer, message: message});
+  this.emit('outbound', {device: device, buffer: buffer, message: message});
 
   //start inbound
   if (this.running) this._startListen();
@@ -181,8 +191,14 @@ Network.prototype.getDevices = function () {
 //========== PRIVATE ==========
 Network.prototype._loop = function (_this) {
   //console.log('loop enter');
+  var processing = false;
   while (_this.running) {
-    _this._processInbound();
+    if (!processing) {
+      processing = true;
+      _this._processInbound().then(function () {
+        processing = false;
+      });
+    }
     sleep(5);
   }
 };
@@ -196,7 +212,7 @@ Network.prototype._stopListen = function () {
   this.radio.stopListening();
   this.listening = false;
 };
-Network. prototype._getNextMessage = function(device){
+Network.prototype._getNextMessage = function (device) {
   var outbound;
   //todo: use latest message from admin app
   if (!outbound) outbound = new Message({networkId: this.config.networkId, deviceId: device.deviceId, instruction: Instructions.WAKE, sleep: 10});
@@ -205,6 +221,8 @@ Network. prototype._getNextMessage = function(device){
 };
 //==================== Inbound ====================
 Network.prototype._processInbound = function () {
+  var deferred = Q.defer();
+  var sequence = Q();
   if (this.listening) {
     var avail = this.radio.available();
     if (avail.any) {
@@ -216,19 +234,27 @@ Network.prototype._processInbound = function () {
       var message = new Message({buffer: data, bufferSize: this.config.bufferSize});
       if (message.validate()) {
         var device = this._getDevice(message.deviceId);
-        if (device) device.stampInbound(this.db, message.transactionId, buffer.toByteArray(), time);
-        this.emit('inbound', {device:device, buffer: buffer, message: message});
+        this.emit('inbound', {device: device, buffer: buffer, message: message});
         var inbound = this._process[message.instruction] || this._processGeneral;
-        inbound.bind(this)(message).then(function(outbound){
-          if (outbound) this.send(outbound, device);
-        }.bind(this));
+        if (device) sequence = sequence.then(device.stampInbound(this.db, message.transactionId, buffer.toByteArray(), time));
+        sequence = sequence
+          .then(function (val) { //process inbound
+            return inbound.bind(this)(message);
+          }.bind(this))
+          .then(function (outbound) {//send
+            if (outbound) this.send(outbound, device);
+          }.bind(this));
       }
     }
   }
+  sequence.then(function () {
+    deferred.resolve(this);
+  });
+  return deferred.promise;
 };
 //---------- processGeneral ----------
-Network.prototype._processGeneral = function(message){
-  return new Promise(function(resolve, reject) {
+Network.prototype._processGeneral = function (message) {
+  return new Promise(function (resolve, reject) {
     var device = this._getDevice(message.deviceId);
     var outbound;
     if (!device) {
@@ -243,69 +269,70 @@ Network.prototype._processGeneral = function(message){
   });
 };
 //---------- NETWORK_CONNECT ----------
-Network.prototype._process[Instructions.NETWORK_CONNECT] = function(message){
-  return new Promise(function(resolve, reject){
-    var hardwareId = message.data.readUInt16LE(0);
-    var outbound = new Message({data: message.data, fromCommander: true, networkId: this.config.networkId, instruction: Instructions.NETWORK_NEW});
-    var device = this._getDeviceForHardwareId(hardwareId);
-    if (device) {
-      this.emit('deviceConnectExisting', {device: device});
+Network.prototype._process[Instructions.NETWORK_CONNECT] = function (message) {
+  var deferred = Q.defer();
+  var hardwareId = message.data.readUInt16LE(0);
+  var outbound = new Message({data: message.data, fromCommander: true, networkId: this.config.networkId, instruction: Instructions.NETWORK_NEW});
+  var device = this._getDeviceForHardwareId(hardwareId);
+  if (device) {
+    this.emit('deviceConnectExisting', {device: device});
+    outbound.deviceId = device.deviceId;
+    deferred.resolve(outbound);
+  }
+  else {
+    var device = new Device({hardwareId: hardwareId});
+    device.save(this.db).then(function () {
+      this.devices.push(device);
       outbound.deviceId = device.deviceId;
-      resolve(outbound);
-    }
-    else {
-      var device = new Device({hardwareId: hardwareId});
-      device.save(this.db).then(function(){
-        this.devices.push(device);
-        outbound.deviceId = device.deviceId;
-        this.emit('deviceConnectNew', {device: device});
-        resolve(outbound);
-      }.bind(this));
-    }
-  }.bind(this));
+      this.emit('deviceConnectNew', {device: device});
+      deferred.resolve(outbound);
+    }.bind(this));
+  }
+  return deferred.promise;
 };
 //---------- NETWORK_CONFIRM ----------
-Network.prototype._process[Instructions.NETWORK_CONFIRM] = function(message){
-  return new Promise(function(resolve, reject) {
-    var device = this._getDevice(message.deviceId);
-    var outbound;
-    if (!device) {
-      this.emit('deviceInvalid', {deviceId: message.deviceId});
-      outbound = new Message({data: message.data, instruction: Instructions.NETWORK_INVALID});
-      resolve(outbound);
+Network.prototype._process[Instructions.NETWORK_CONFIRM] = function (message) {
+  var deferred = Q.defer();
+  var device = this._getDevice(message.deviceId);
+  var outbound;
+  if (!device) {
+    this.emit('deviceInvalid', {deviceId: message.deviceId});
+    outbound = new Message({data: message.data, instruction: Instructions.NETWORK_INVALID});
+    deferred.resolve(outbound);
+  }
+  else {
+    var sequence = Q();
+    if (!device.confirmed) {
+      sequence.then(device.confirm(this.db));
+      this.emit('deviceConfirmNew', {device: device});
     }
     else {
-      if (!device.confirmed) {
-        device.confirm(this.db);
-        this.emit('deviceConfirmNew', {device: device});
-      }
-      else {
-        this.emit('deviceConfirmExisting', {device: device})
-      }
-      outbound = message.isRelay && this._getNextMessage(device) || new Message({networkId: this.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: Instructions.PING});
-      resolve(outbound);
+      this.emit('deviceConfirmExisting', {device: device})
     }
-  }.bind(this));
+    outbound = message.isRelay && this._getNextMessage(device) || new Message({networkId: this.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: Instructions.PING});
+    sequence.then(deferred.resolve(outbound));
+  }
+  return deferred.promise;
 };
 //---------- PING_CONFIRM ----------
-Network.prototype._process[Instructions.PING_CONFIRM] = function(message){
-  return new Promise(function(resolve, reject) {
-    var device = this._getDevice(message.deviceId);
-    var outbound;
-    if (!device) {
-      this.emit('deviceInvalid', {deviceId: message.deviceId});
-      outbound = new Message({data: message.data, instruction: Instructions.NETWORK_INVALID});
-      resolve(outbound);
+Network.prototype._process[Instructions.PING_CONFIRM] = function (message) {
+  var deferred = Q.defer();
+  var device = this._getDevice(message.deviceId);
+  var outbound;
+  if (!device) {
+    this.emit('deviceInvalid', {deviceId: message.deviceId});
+    outbound = new Message({data: message.data, instruction: Instructions.NETWORK_INVALID});
+    deferred.resolve(outbound)
+  }
+  else {
+    if (!message.isRelay) {
+      outbound = this._getNextMessage(device);
     }
-    else {
-      if (!message.isRelay) {
-        outbound = this._getNextMessage(device);
-      }
-      //todo: calculate ping time
-      this.emit('pingConfirm', {device: device});
-      resolve(outbound);
-    }
-  }.bind(this));
+    //todo: calculate ping time
+    this.emit('pingConfirm', {device: device});
+    deferred.resolve(outbound)
+  }
+  return deferred.promise;
 };
 //==================== Devices ====================
 Network.prototype._getDeviceForHardwareId = function (hardwareId) {
