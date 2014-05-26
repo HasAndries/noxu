@@ -70,7 +70,7 @@ Device.prototype.loadTransactions = function(db){
     this.outbound = output[0];
     this.inbound = output[1];
     deferred.resolve(this);
-  }, deferred.reject);
+  }.bind(this), deferred.reject);
   return deferred.promise;
 };
 Device.prototype.stampOutbound = function(db, buffer){
