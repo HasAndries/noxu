@@ -211,10 +211,21 @@ describe('Network', function () {
     });
     describe('[NETWORK_CONFIRM]', function () {
       it('should confirm the device and raise event [deviceConfirmNew] for an unconfirmed Device', function (done) {
+        db.when('insert into devices set ?', null, function (params) {
+          console.log('insert');
+          console.log(params);
+          var output = [];
+          output.insertId = nextDeviceId++;
+          return [output];
+        });
+        db.when('update devices set ? where deviceId = ?', null, function (params) {
+          console.log('update');
+          console.log(params);
+          return [];
+        });
         //event
         network.on('deviceConfirmNew', function (input) {
           expect(input.device.deviceId).toEqual(1);
-          done();
         });
 
         //setup
@@ -227,9 +238,10 @@ describe('Network', function () {
           expect(options.device.nextTransactionId).toEqual(2);
           console.log(options.device);
           expect(options.device.confirmed).toEqual(1);
+          done();
         });
       });
-      it('should confirm the device and raise event [deviceConfirmExisting] for a confirmed Device', function (done) {
+      xit('should confirm the device and raise event [deviceConfirmExisting] for a confirmed Device', function (done) {
         //event
         network.on('deviceConfirmExisting', function (input) {
           expect(input.device.deviceId).toEqual(1);
@@ -246,7 +258,7 @@ describe('Network', function () {
           expect(options.device.confirmed).toEqual(1);
         });
       });
-      it('should raise event [deviceInvalid] and send [NETWORK_INVALID] for an invalid Device', function (done) {
+      xit('should raise event [deviceInvalid] and send [NETWORK_INVALID] for an invalid Device', function (done) {
         //event
         network.on('deviceInvalid', function (input) {
           expect(input.deviceId).toEqual(1);
@@ -261,7 +273,7 @@ describe('Network', function () {
           expect(network.radio.lastMessage.data).toEqual(null);
         });
       });
-      it('should send [PING] for a new valid [NETWORK_CONFIRM]', function () {
+      xit('should send [PING] for a new valid [NETWORK_CONFIRM]', function () {
         NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).then(function (options) {
         //inbound
         expect(network.devices[0].inbound.length).toEqual(1);
@@ -279,7 +291,7 @@ describe('Network', function () {
         expect(network.radio.lastMessage.sleep).toEqual(0);
         });
       });
-      it('should send [WAKE] for a new valid [NETWORK_CONFIRM] that is Relayed', function () {
+      xit('should send [WAKE] for a new valid [NETWORK_CONFIRM] that is Relayed', function () {
         var message = new Message({instruction: Instructions.NETWORK_CONFIRM, networkId: network.config.networkId, deviceId: device.deviceId, isRelay: true});
 
         NETWORK_CONNECT({network: network}).then(function(options){

@@ -24,7 +24,7 @@ describe('Inbound', function () {
   });
 
   describe('Constructor', function () {
-    it('should create an Outbound with defaults', function () {
+    it('should create an Inbound with defaults', function () {
       var inbound = new Inbound();
       expect(inbound.inboundId).toEqual(null);
       expect(inbound.transactionId).toEqual(null);
@@ -34,7 +34,7 @@ describe('Inbound', function () {
       expect(inbound.outboundId).toEqual(null);
       expect(inbound.latency).toEqual(null);
     });
-    it('should create an Outbound based on input options', function () {
+    it('should create an Inbound based on input options', function () {
       var inbound = new Inbound({inboundId: 5, transactionId: 3, deviceId: 7, buffer: [1,2,3,4,5,6,7,8,9,0], time: [1,5], outboundId: 7, latency: [2,5]});
       expect(inbound.inboundId).toEqual(5);
       expect(inbound.transactionId).toEqual(3);
