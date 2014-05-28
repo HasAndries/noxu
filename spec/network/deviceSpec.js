@@ -54,7 +54,7 @@ describe('Device', function () {
     db.verify();
   });
 
-  describe('Constructor', function () {
+  xdescribe('Constructor', function () {
     it('should create a Device with defaults', function () {
       var device = new Device();
       expect(device.deviceId).toEqual(null);
@@ -74,7 +74,7 @@ describe('Device', function () {
       expect(device.inbound).toEqual([1, 5]);
     });
   });
-  describe('loadAll', function () {
+  xdescribe('loadAll', function () {
     it('should load all devices from the database', function (done) {
       db.expect('select * from devices', null, function (params) {
         var output = [
@@ -103,7 +103,7 @@ describe('Device', function () {
 
     });
   });
-  describe('save', function () {
+  xdescribe('save', function () {
     it('should insert a new Device and assign [deviceId]', function () {
       var device = new Device({hardwareId: 32, nextTransactionId: 7, confirmed: 1});
       db.expect('insert into devices set ?', null, function (params) {
@@ -138,7 +138,7 @@ describe('Device', function () {
       device.save(db, ['hardwareId']);
     });
   });
-  describe('confirm', function () {
+  xdescribe('confirm', function () {
     it('should set [confirmed] and save the Device', function () {
       var device = new Device({deviceId: 55, hardwareId: 32, nextTransactionId: 7, confirmed: 1});
       db.expect('update devices set ? where deviceId = ?', null, function (params) {
@@ -153,7 +153,7 @@ describe('Device', function () {
       device.save(db);
     });
   });
-  describe('loadTransactions', function () {
+  xdescribe('loadTransactions', function () {
     it('should load all Transactions for a device', function () {
       var device = new Device({deviceId: 55});
       device.loadTransactions(db).then(function () {
@@ -165,7 +165,7 @@ describe('Device', function () {
       });
     });
   });
-  describe('stampOutbound', function () {
+  xdescribe('stampOutbound', function () {
     it('should create a new [Outbound] transaction, save it to the db, add it to [Outbound] list and increase [nextTransactionId]', function () {
       var device = new Device({deviceId: 55, nextTransactionId: 3, hrtime: Help.hrtime});
       db.expect('insert into outbound set ?', null, function (params) {
@@ -205,15 +205,18 @@ describe('Device', function () {
     });
   });
   describe('stampInbound', function () {
-    it('should create a new [Inbound] transaction, calculate the latency, save it to the db and add it to [Inbound] list', function () {
+    it('should create a new [Inbound] transaction, calculate the latency, save it to the db and add it to [Inbound] list', function (done) {
+      console.log('===========================================')
       var device = new Device({deviceId: 55, nextTransactionId: 3, hrtime: Help.hrtime});
       db.expect('insert into outbound set ?', null, function (params) {
+        console.log('insert into outbound set ?');
         expect(params).toEqual({transactionId: 3, deviceId: 55, buffer: '[1,2,3,4,5,6,7,8,9,0]', timeS: 100, timeNs: 1000});
         var output = [];
         output.insertId = 12;
         return [output];
       });
       db.expect('insert into inbound set ?', null, function (params) {
+        console.log('insert into inbound set ?');
         expect(params).toEqual({transactionId: 3, deviceId: 55, buffer: '[0,9,8,7,6,5,4,3,2,1]', timeS: 102, timeNs: 1500, outboundId: 12, latency: 100000001000});
         var output = [];
         output.insertId = 33;
@@ -221,13 +224,16 @@ describe('Device', function () {
       });
       Help.hrtimeVal = [100, 1000];
       device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0])
+        .then(console.log('1'))
         .then(device.stampInbound(db, 3, [0, 9, 8, 7, 6, 5, 4, 3, 2, 1], [102, 1500]))
         .then(function () {
           expect(device.inbound.length).toEqual(1);
           expect(device.inbound[0]).toEqual(new Inbound({inboundId: 33, transactionId: 3, deviceId: 55, buffer: [0, 9, 8, 7, 6, 5, 4, 3, 2, 1], time: [102, 1500], outboundId: 12, latency: 100000001000}));
+          console.log('===========================================');
+          done();
         });
     });
-    it('should push out old outbound items to maintain only the max outbound amount', function () {
+    xit('should push out old outbound items to maintain only the max outbound amount', function () {
       var device = new Device({deviceId: 55, maxInbound: 3});
       device.stampInbound(db, 1, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], [1, 1])
         .then(device.stampInbound(db, 2, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], [2, 2]))

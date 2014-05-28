@@ -44,7 +44,7 @@ Device.prototype.save = function (db, fields) {
         if (fields.indexOf(key) == -1) delete input[key];
       }
     }
-    if (!this.deviceId) { //insert new
+    if (!device.deviceId) { //insert new
       db.query('insert into devices set ?', input, function (err, rows) {
         if (err) reject(err);
         device.deviceId = rows.insertId;
@@ -54,6 +54,7 @@ Device.prototype.save = function (db, fields) {
     else { //update existing
       db.query('update devices set ? where deviceId = ?', [input, device.deviceId], function (err, rows) {
         if (err) reject(err);
+        console.log('device saved');
         resolve(device);
       });
     }
@@ -61,38 +62,42 @@ Device.prototype.save = function (db, fields) {
 };
 Device.prototype.confirm = function (db) {
   var device = this;
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     device.confirmed = 1;
-    device.save(db).then(resolve, reject);
+    device.save(db).then(resolve());
   });
 };
 Device.prototype.loadTransactions = function (db) {
   var device = this;
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     Promise.all([Outbound.loadForDevice(db, device.deviceId), Inbound.loadForDevice(db, device.deviceId)]).then(function (output) {
       device.outbound = output[0];
       device.inbound = output[1];
       resolve(device);
-    }, reject);
+    });
   });
 };
 Device.prototype.stampOutbound = function (db, buffer) {
   var device = this;
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
+    console.log('stamp outbound');
     var outbound = new Outbound({transactionId: device.nextTransactionId, deviceId: device.deviceId, buffer: buffer, time: device.hrtime()});
     outbound.save(db).then(function () {
       device.outbound.push(outbound);
       if (device.outbound.length > device.maxOutbound) device.outbound.splice(0, device.outbound.length - device.maxOutbound);
       device.nextTransactionId++;
-      device.save(db, ['nextTransactionId']).then(resolve, reject);
+      console.log('outbound saved');
+      device.save(db, ['nextTransactionId']).then(resolve(device));
     });
   });
 };
 Device.prototype.stampInbound = function (db, transactionId, buffer, time) {
   var device = this;
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
+    console.log('stamp inbound');
     var inbound = new Inbound({transactionId: transactionId, deviceId: device.deviceId, buffer: buffer, time: time});
     //locate first matching outbound
+    console.log(device.outbound);
     for (var ct = 0; ct < device.outbound.length; ct++) {
       if (device.outbound[ct].transactionId == transactionId) {
         inbound.outboundId = device.outbound[ct].outboundId;
@@ -102,6 +107,7 @@ Device.prototype.stampInbound = function (db, transactionId, buffer, time) {
       }
     }
     inbound.save(db).then(function () {
+      console.log('inbound saved');
       device.inbound.push(inbound);
       if (device.inbound.length > device.maxInbound) device.inbound.splice(0, device.inbound.length - device.maxInbound);
       resolve(device);
