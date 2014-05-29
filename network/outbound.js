@@ -33,33 +33,33 @@ Outbound.loadForDevice = function (db, deviceId, limit) {
 };
 Outbound.prototype.save = function (db, fields) {
   var outbound = this;
-  return new Promise(function (resolve) {
-    var input = {
-      transactionId: outbound.transactionId,
-      deviceId: outbound.deviceId,
-      buffer: JSON.stringify(outbound.buffer),
-      timeS: outbound.time && outbound.time[0],
-      timeNs: outbound.time && outbound.time[1]
-    };
-    if (fields) {
-      for (var key in input) {
-        if (fields.indexOf(key) == -1) delete input[key];
-      }
+  var defer = Promise.defer();
+  var input = {
+    transactionId: outbound.transactionId,
+    deviceId: outbound.deviceId,
+    buffer: JSON.stringify(outbound.buffer),
+    timeS: outbound.time && outbound.time[0],
+    timeNs: outbound.time && outbound.time[1]
+  };
+  if (fields) {
+    for (var key in input) {
+      if (fields.indexOf(key) == -1) delete input[key];
     }
-    if (!this.outboundId) { //insert new
-      db.query('insert into outbound set ?', input, function (err, rows) {
-        if (err) reject(err);
-        outbound.outboundId = rows.insertId;
-        resolve(outbound);
-      });
-    }
-    else { //update existing
-      db.query('update outbound set ? where outboundId = ?', [input, outbound.outboundId], function (err, rows) {
-        if (err) reject(err);
-        resolve(outbound);
-      });
-    }
-  });
+  }
+  if (!this.outboundId) { //insert new
+    db.query('insert into outbound set ?', input, function (err, rows) {
+      if (err) defer.reject(err);
+      outbound.outboundId = rows.insertId;
+      defer.resolve(outbound);
+    });
+  }
+  else { //update existing
+    db.query('update outbound set ? where outboundId = ?', [input, outbound.outboundId], function (err, rows) {
+      if (err) defer.reject(err);
+      defer.resolve(outbound);
+    });
+  }
+  return defer.promise;
 };
 Outbound.prototype.getMessage = function () {
   return new Message({buffer: this.buffer});

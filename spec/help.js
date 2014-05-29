@@ -69,9 +69,9 @@ MockDb.prototype.query = function(query, params, callback){
       var output = list[query].callback(params);
       var rows = output[0] || null;
       var err = output[1] || null;
-      setTimeout(function() {
+      //process.nextTick(function() {
         callback(err, rows);
-      }, 0);
+      //});
       return;
     }
   }

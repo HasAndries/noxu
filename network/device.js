@@ -22,7 +22,7 @@ Device.loadAll = function (db) {
     var sequence = Promise.resolve();
     db.query('select * from devices', function (err, rows) {
       if (err) throw err;
-      for(var ct=0;ct<rows.length;ct++){
+      for (var ct = 0; ct < rows.length; ct++) {
         var device = new Device({deviceId: rows[ct].deviceId, hardwareId: rows[ct].hardwareId, nextTransactionId: rows[ct].nextTransactionId, confirmed: rows[ct].confirmed});
         output.push(device);
         sequence = sequence.then(device.loadTransactions(db));
@@ -78,18 +78,28 @@ Device.prototype.loadTransactions = function (db) {
   });
 };
 Device.prototype.stampOutbound = function (db, buffer) {
+  console.log('stamp outbound');
   var device = this;
-  return new Promise(function (resolve) {
-    console.log('stamp outbound');
-    var outbound = new Outbound({transactionId: device.nextTransactionId, deviceId: device.deviceId, buffer: buffer, time: device.hrtime()});
-    outbound.save(db).then(function () {
+  var outbound = new Outbound({transactionId: device.nextTransactionId, deviceId: device.deviceId, buffer: buffer, time: device.hrtime()});
+  var promise = outbound.save(db)
+    .then(function () {
       device.outbound.push(outbound);
       if (device.outbound.length > device.maxOutbound) device.outbound.splice(0, device.outbound.length - device.maxOutbound);
       device.nextTransactionId++;
       console.log('outbound saved');
-      device.save(db, ['nextTransactionId']).then(resolve(device));
-    });
-  });
+    })
+    .then(device.save(db, ['nextTransactionId']))
+    .then(console.log('stampOutboundAfter'));
+
+  return promise;
+//  return new Promise(function (resolve) {
+//    console.log('stamp outbound');
+//    var outbound = new Outbound({transactionId: device.nextTransactionId, deviceId: device.deviceId, buffer: buffer, time: device.hrtime()});
+//    outbound.save(db).then(function () {
+//
+//      device.save(db, ['nextTransactionId']).then(resolve(device));
+//    });
+//  }).then(console.log('stampOutboundAfter'));
 };
 Device.prototype.stampInbound = function (db, transactionId, buffer, time) {
   var device = this;
