@@ -74,12 +74,10 @@ describe('Promise', function () {
     console.log('=====================');
     var calls = [];
     var func1 = function () {
-      console.log(1);
       calls.push(1);
       return 'hello';
     };
     var func2 = function () {
-      console.log(2);
       calls.push(2);
       return 'world';
     };
