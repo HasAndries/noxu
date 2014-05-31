@@ -1,6 +1,10 @@
 var Promise = require('../../lib/promise');
 
 describe('Promise', function () {
+  beforeEach(function(){
+    Promise.failRemoveAll();
+  });
+
   it('should create Promise from routine and run success', function (done) {
     var routine = function (resolve) {
       resolve('hello');
@@ -143,31 +147,103 @@ describe('Promise', function () {
     });
   });
 
-  xit('should fail a Promise on reject', function (done) {
-    console.log('=====================');
+  it('should fail a Promise on reject', function (done) {
     new Promise(function (resolve, reject) {
       reject('hello');
     })
       .success(function () {
         console.log('Success called');
-        //this.fail(Error('Success called'));
       })
       .fail(function (error) {
         expect(error).toEqual('hello');
         done();
       });
   });
-  xit('should fail a Promise wxith Error on reject', function () {
-    var promise = new Promise(function (resolve, reject) {
-      reject(Error('blah'));
+  it('should fail a Promise with Error on reject', function (done) {
+    new Promise(function (resolve, reject) {
+      reject(Error('hello'));
+    })
+      .success(function () {
+        console.log('Success called');
+      })
+      .fail(function (error) {
+        expect(error instanceof Error).toEqual(true);
+        expect(error.message).toEqual('hello');
+        done();
+      });
+  });
+
+  it('should fail a Promise on exception in a function', function (done) {
+    Promise(function () {
+      throw Error('hello');
+    })
+      .success(function () {
+        console.log('Success called');
+      })
+      .fail(function (error) {
+        expect(error instanceof Error).toEqual(true);
+        expect(error.message).toEqual('hello');
+        done();
+      });
+  });
+
+  it('should fail a Promise and skip chain of Promises until a fail handler', function (done) {
+    var chainCalled = false;
+    Promise(function () {
+      throw Error('hello');
+    }).then(function(){
+      chainCalled = true;
+    })
+      .success(function () {
+        console.log('Success called');
+      })
+      .fail(function (error) {
+        expect(error instanceof Error).toEqual(true);
+        expect(error.message).toEqual('hello');
+        expect(chainCalled).toEqual(false);
+        done();
+      });
+  });
+
+  it('should fire a global fail handler', function(done){
+    Promise.fail(function(error){
+      expect(error instanceof Error).toEqual(true);
+      expect(error.message).toEqual('hello');
+      done();
+    });
+
+    Promise(function(){
+      throw Error('hello');
+    }).success();
+  });
+
+  it('should not fire global fail handler if there is local fail handler', function(done){
+    Promise.fail(function(error){
+      throw Error('this should not have been called');
+      done();
+    });
+
+    Promise(function(){
+      throw Error('hello');
+    }).success().fail(function(error){
+      expect(error instanceof Error).toEqual(true);
+      expect(error.message).toEqual('hello');
+      done();
     });
   });
 
-  xit('should fail a Promise on exception in a function', function () {
+  it('should fire a global fail handler if Error in local fail', function(done){
+    Promise.fail(function(error){
+      expect(error instanceof Error).toEqual(true);
+      expect(error.message).toEqual('world');
+      done();
+    });
 
-  });
-
-  xit('should fail a Promise and following chain of Promises until a fail handler', function () {
-
+    Promise(function(){
+      throw Error('hello');
+    }).success().fail(function(error){
+      expect(error.message).toEqual('hello');
+      throw Error('world');
+    });
   });
 });
