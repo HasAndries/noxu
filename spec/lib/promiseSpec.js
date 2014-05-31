@@ -1,7 +1,7 @@
 var Promise = require('../../lib/promise');
 
 describe('Promise', function () {
-  beforeEach(function(){
+  beforeEach(function () {
     Promise.failRemoveAll();
   });
 
@@ -65,7 +65,7 @@ describe('Promise', function () {
       calls.push(2);
       return input + ' world';
     };
-    Promise().then(func1).then(func2).success(function(input){
+    Promise().then(func1).then(func2).success(function (input) {
       expect(input).toEqual('hello world');
       expect(calls).toEqual([1, 2]);
       done();
@@ -82,7 +82,7 @@ describe('Promise', function () {
       calls.push(2);
       return 'world';
     };
-    Promise().then(func1()).then(func2()).success(function(input){
+    Promise().then(func1()).then(func2()).success(function (input) {
       expect(input).toEqual('world');
       expect(calls).toEqual([1, 2]);
       done();
@@ -191,7 +191,7 @@ describe('Promise', function () {
     var chainCalled = false;
     Promise(function () {
       throw Error('hello');
-    }).then(function(){
+    }).then(function () {
       chainCalled = true;
     })
       .success(function () {
@@ -205,43 +205,43 @@ describe('Promise', function () {
       });
   });
 
-  it('should fire a global fail handler', function(done){
-    Promise.fail(function(error){
+  it('should fire a global fail handler', function (done) {
+    Promise.fail(function (error) {
       expect(error instanceof Error).toEqual(true);
       expect(error.message).toEqual('hello');
       done();
     });
 
-    Promise(function(){
+    Promise(function () {
       throw Error('hello');
     }).success();
   });
 
-  it('should not fire global fail handler if there is local fail handler', function(done){
-    Promise.fail(function(error){
+  it('should not fire global fail handler if there is local fail handler', function (done) {
+    Promise.fail(function (error) {
       throw Error('this should not have been called');
       done();
     });
 
-    Promise(function(){
+    Promise(function () {
       throw Error('hello');
-    }).success().fail(function(error){
+    }).success().fail(function (error) {
       expect(error instanceof Error).toEqual(true);
       expect(error.message).toEqual('hello');
       done();
     });
   });
 
-  it('should fire a global fail handler if Error in local fail', function(done){
-    Promise.fail(function(error){
+  it('should fire a global fail handler if Error in local fail', function (done) {
+    Promise.fail(function (error) {
       expect(error instanceof Error).toEqual(true);
       expect(error.message).toEqual('world');
       done();
     });
 
-    Promise(function(){
+    Promise(function () {
       throw Error('hello');
-    }).success().fail(function(error){
+    }).success().fail(function (error) {
       expect(error.message).toEqual('hello');
       throw Error('world');
     });
