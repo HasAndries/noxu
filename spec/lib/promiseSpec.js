@@ -2,7 +2,7 @@ var Promise = require('../../lib/promise');
 
 describe('Promise', function () {
   beforeEach(function () {
-    Promise.failRemoveAll();
+
   });
 
   it('should create Promise from routine and run success', function (done) {
@@ -205,45 +205,17 @@ describe('Promise', function () {
       });
   });
 
-  it('should fire a global fail handler', function (done) {
-    Promise.fail(function (error) {
-      expect(error instanceof Error).toEqual(true);
-      expect(error.message).toEqual('hello');
+  it('should emit [error] for reject without fail handler', function (done) {
+    Promise.on('error', function(input){
+      expect(input.promise).toEqual(promise);
+      expect(input.error instanceof Error).toEqual(true);
+      expect(input.error.message).toEqual('hello');
       done();
     });
 
-    Promise(function () {
+    var promise = Promise(function () {
       throw Error('hello');
-    }).success();
-  });
-
-  it('should not fire global fail handler if there is local fail handler', function (done) {
-    Promise.fail(function (error) {
-      throw Error('this should not have been called');
-      done();
     });
-
-    Promise(function () {
-      throw Error('hello');
-    }).success().fail(function (error) {
-      expect(error instanceof Error).toEqual(true);
-      expect(error.message).toEqual('hello');
-      done();
-    });
-  });
-
-  it('should fire a global fail handler if Error in local fail', function (done) {
-    Promise.fail(function (error) {
-      expect(error instanceof Error).toEqual(true);
-      expect(error.message).toEqual('world');
-      done();
-    });
-
-    Promise(function () {
-      throw Error('hello');
-    }).success().fail(function (error) {
-      expect(error.message).toEqual('hello');
-      throw Error('world');
-    });
+    promise.success();
   });
 });
