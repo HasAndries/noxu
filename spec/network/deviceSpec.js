@@ -206,17 +206,14 @@ describe('Device', function () {
   });
   describe('stampInbound', function () {
     it('should create a new [Inbound] transaction, calculate the latency, save it to the db and add it to [Inbound] list', function (done) {
-      console.log('===========================================')
       var device = new Device({deviceId: 55, nextTransactionId: 3, hrtime: Help.hrtime});
       db.expect('insert into outbound set ?', null, function (params) {
-        console.log('insert into outbound set ?');
         expect(params).toEqual({transactionId: 3, deviceId: 55, buffer: '[1,2,3,4,5,6,7,8,9,0]', timeS: 100, timeNs: 1000});
         var output = [];
         output.insertId = 12;
         return [output];
       });
       db.expect('insert into inbound set ?', null, function (params) {
-        console.log('insert into inbound set ?');
         expect(params).toEqual({transactionId: 3, deviceId: 55, buffer: '[0,9,8,7,6,5,4,3,2,1]', timeS: 102, timeNs: 1500, outboundId: 12, latency: 100000001000});
         var output = [];
         output.insertId = 33;
@@ -224,12 +221,10 @@ describe('Device', function () {
       });
       Help.hrtimeVal = [100, 1000];
       device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0])
-        .then(console.log('1'))
         .then(device.stampInbound(db, 3, [0, 9, 8, 7, 6, 5, 4, 3, 2, 1], [102, 1500]))
-        .then(function () {
+        .success(function () {
           expect(device.inbound.length).toEqual(1);
           expect(device.inbound[0]).toEqual(new Inbound({inboundId: 33, transactionId: 3, deviceId: 55, buffer: [0, 9, 8, 7, 6, 5, 4, 3, 2, 1], time: [102, 1500], outboundId: 12, latency: 100000001000}));
-          console.log('===========================================');
           done();
         });
     });
