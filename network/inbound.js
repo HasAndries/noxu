@@ -1,4 +1,5 @@
-var Promise = require('bluebird');
+var Data = require('../lib/data')
+var Promise = require('../lib/promise');
 var Message = require('./message');
 
 function Inbound(options) {
@@ -37,8 +38,8 @@ Inbound.loadForDevice = function (db, deviceId, limit) {
 };
 Inbound.prototype.save = function (db, fields) {
   var inbound = this;
-  return new Promise(function (resolve) {
-    var input = {
+  return new Promise(function (resolve, reject) {
+    var input = Data.filterFields({
       transactionId: inbound.transactionId,
       deviceId: inbound.deviceId,
       buffer: JSON.stringify(inbound.buffer),
@@ -46,22 +47,18 @@ Inbound.prototype.save = function (db, fields) {
       timeNs: inbound.time && inbound.time[1],
       outboundId: inbound.outboundId,
       latency: inbound.latency
-    };
-    if (fields) {
-      for (var key in input) {
-        if (fields.indexOf(key) == -1) delete input[key];
-      }
-    }
+    }, fields);
+
     if (!inbound.inboundId) { //insert new
       db.query('insert into inbound set ?', input, function (err, rows) {
-        if (err) throw err;
+        if (err) reject(err);
         inbound.inboundId = rows.insertId;
         resolve(inbound);
       });
     }
     else { //update existing
-      db.query('update inbound set ? where inboundId = ?', [input, this.inboundId], function (err, rows) {
-        if (err) throw err;
+      db.query('update inbound set ? where inboundId = ?', [input, inbound.inboundId], function (err, rows) {
+        if (err) reject(err);
         resolve(inbound);
       });
     }

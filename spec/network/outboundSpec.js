@@ -42,7 +42,7 @@ describe('Outbound', function () {
     });
   });
   describe('loadForDevice', function () {
-    it('should load Outbounds for a DeviceID from the database', function () {
+    it('should load Outbounds for a DeviceID from the database', function (done) {
       db.expect('select * from outbound where deviceId = ? limit ?', null, function (params) {
         expect(params).toEqual([2, 5]);
         var output = [
@@ -52,7 +52,7 @@ describe('Outbound', function () {
         return [output];
       });
 
-      Outbound.loadForDevice(db, 2).then(function(outbound){
+      Outbound.loadForDevice(db, 2).success(function(outbound){
         expect(outbound.length).toEqual(2);
         //0
         expect(outbound[0].outboundId).toEqual(1);
@@ -66,18 +66,62 @@ describe('Outbound', function () {
         expect(outbound[1].deviceId).toEqual(2);
         expect(outbound[1].buffer).toEqual([1,2,3,4,5,6,1,2,3,4,5,6,7,8,9,0]);
         expect(outbound[1].time).toEqual([20, 400]);
+        done();
       });
     });
-    it('should load the last x Outbounds for all devices', function () {
+    it('should load the last x Outbounds for all devices', function (done) {
       var count = 5;
       db.expect('select * from outbound where deviceId = ? limit ?', null, function (params) {
         expect(params).toEqual([2, count]);
         var output = [];
         return [output];
       });
-      Outbound.loadForDevice(db, 2);
-      count = 11;
-      Outbound.loadForDevice(db, 2, 11);
+      Outbound.loadForDevice(db, 2)
+        .then(function(){
+          count = 11;
+        })
+        .then(Outbound.loadForDevice(db, 2, 11))
+        .success(function(){
+          done();
+        });
+    });
+  });
+  describe('save', function(){
+    it('should insert an Outbound that has no outboundId', function(done){
+      db.expect('insert into outbound set ?', null, function (params) {
+        expect(params).toEqual({transactionId: 3, deviceId: 55, buffer: '[0,9,8,7,6,5,4,3,2,1]', timeS: 100, timeNs: 1000});
+        var output = [];
+        output.insertId = 41;
+        return [output];
+      });
+      var outbound = new Outbound({transactionId: 3, deviceId: 55, buffer: [0,9,8,7,6,5,4,3,2,1], time: [100, 1000]});
+      outbound.save(db).success(function(val){
+        expect(outbound.outboundId).toEqual(41);
+        expect(outbound).toEqual(val);
+        done();
+      });
+    });
+    it('should update an Outbound that has an outboundId', function(done){
+      db.expect('update outbound set ? where outboundId = ?', null, function (params) {
+        expect(params).toEqual([{transactionId: 3, deviceId: 55, buffer: '[0,9,8,7,6,5,4,3,2,1]', timeS: 102, timeNs: 1500}, 42]);
+        return [];
+      });
+      var outbound = new Outbound({outboundId: 42, transactionId: 3, deviceId: 55, buffer: [0,9,8,7,6,5,4,3,2,1], time: [102, 1500]});
+      outbound.save(db).success(function(val){
+        expect(outbound).toEqual(val);
+        done();
+      });
+    });
+    it('should filter input fields', function(done){
+      db.expect('update outbound set ? where outboundId = ?', null, function (params) {
+        expect(params).toEqual([{buffer: '[0,9,8,7,6,5,4,3,2,1]'}, 42]);
+        return [];
+      });
+      var outbound = new Outbound({outboundId: 42, transactionId: 3, deviceId: 55, buffer: [0, 9, 8, 7, 6, 5, 4, 3, 2, 1], time: [102, 1500]});
+      outbound.save(db, ['buffer']).success(function(val){
+        expect(outbound).toEqual(val);
+        done();
+      });
     });
   });
 });
