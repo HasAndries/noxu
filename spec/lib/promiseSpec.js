@@ -110,7 +110,7 @@ describe('Promise', function () {
   it('should run an array of Promises in any order as one Promise with results in sequence', function (done) {
     var calls = [];
     var promise1 = new Promise(function (resolve) {
-      process.nextTick(function () {
+      setImmediate(function () {
         calls.push(1);
         resolve('hello');
       });
@@ -217,5 +217,25 @@ describe('Promise', function () {
       throw Error('hello');
     });
     promise.success();
+  });
+
+  it('should perform well', function(done){
+    var iterations = 10000;
+    var start = process.hrtime();
+    var spawn = function(count){
+      new Promise(function(resolve){
+        resolve(count);
+      }).success(function(val){
+          if (count > 1) spawn(--count);
+          else {
+            var diff = process.hrtime(start);
+            var ns = diff[0] * 1e9 + diff[1];
+            var nsPerI = ns/iterations;
+            expect(nsPerI).toBeLessThan(10000);
+            done();
+          }
+      });
+    };
+    spawn(iterations);
   });
 });
