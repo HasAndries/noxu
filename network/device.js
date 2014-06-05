@@ -63,10 +63,8 @@ Device.prototype.save = function (db, fields) {
 };
 Device.prototype.confirm = function (db) {
   var device = this;
-  return new Promise(function (resolve, reject) {
-    device.confirmed = 1;
-    device.save(db).success(resolve).fail(reject);
-  });
+  device.confirmed = 1;
+  return device.save(db);
 };
 Device.prototype.loadTransactions = function (db) {
   var device = this;

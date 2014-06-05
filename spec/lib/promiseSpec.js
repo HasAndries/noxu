@@ -34,6 +34,18 @@ describe('Promise', function () {
     });
   });
 
+  it('should create Promise from a function and run success of function Promise', function(done){
+    var promise = Promise(function () {
+      return new Promise(function(resolve){
+        resolve('frikkie');
+      });
+    });
+    promise.success(function (val) {
+      expect(val).toEqual('frikkie');
+      done();
+    });
+  });
+
   it('should chain Promises', function (done) {
     var calls = [];
     var promise1 = new Promise(function (resolve) {
