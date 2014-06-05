@@ -16,18 +16,20 @@ function Device(options) {
 }
 
 Device.loadAll = function (db) {
-  return new Promise(function (resolve) {
+  return new Promise(function (resolve, reject) {
     var output = [];
-    //console.log(db.config.connectionConfig.database);
-    var sequence = Promise.resolve();
+    var sequence = [];
     db.query('select * from devices', function (err, rows) {
-      if (err) throw err;
+      if (err) reject(err);
       for (var ct = 0; ct < rows.length; ct++) {
         var device = new Device({deviceId: rows[ct].deviceId, hardwareId: rows[ct].hardwareId, nextTransactionId: rows[ct].nextTransactionId, confirmed: rows[ct].confirmed});
         output.push(device);
-        sequence = sequence.then(device.loadTransactions(db));
+        sequence.push(device.loadTransactions(db));
       }
-      sequence.then(resolve(output));
+
+      Promise.all(sequence).success(function (val) {
+        resolve(output)
+      }).fail(reject);
     });
   });
 };
@@ -61,14 +63,14 @@ Device.prototype.save = function (db, fields) {
 };
 Device.prototype.confirm = function (db) {
   var device = this;
-  return new Promise(function (resolve) {
+  return new Promise(function (resolve, reject) {
     device.confirmed = 1;
-    device.save(db).then(resolve());
+    device.save(db).success(resolve).fail(reject);
   });
 };
 Device.prototype.loadTransactions = function (db) {
   var device = this;
-  return new Promise(function (resolve) {
+  return new Promise(function (resolve, reject) {
     Promise.all([Outbound.loadForDevice(db, device.deviceId), Inbound.loadForDevice(db, device.deviceId)]).success(function (output) {
       device.outbound = output[0];
       device.inbound = output[1];
@@ -78,7 +80,6 @@ Device.prototype.loadTransactions = function (db) {
 };
 Device.prototype.stampOutbound = function (db, buffer) {
   var device = this;
-  var outbound = new Outbound({transactionId: device.nextTransactionId, deviceId: device.deviceId, buffer: buffer, time: device.hrtime()});
   return new Promise(function (resolve, reject) {
     var outbound = new Outbound({transactionId: device.nextTransactionId, deviceId: device.deviceId, buffer: buffer, time: device.hrtime()});
     outbound.save(db)
@@ -88,8 +89,8 @@ Device.prototype.stampOutbound = function (db, buffer) {
         device.nextTransactionId++;
       })
       .then(device.save(db, ['nextTransactionId']))
-      .success(function(){
-        resolve(device)
+      .success(function () {
+        resolve(device);
       }).fail(reject);
   });
 };

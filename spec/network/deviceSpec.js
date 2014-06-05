@@ -54,7 +54,7 @@ describe('Device', function () {
     db.verify();
   });
 
-  xdescribe('Constructor', function () {
+  describe('Constructor', function () {
     it('should create a Device with defaults', function () {
       var device = new Device();
       expect(device.deviceId).toEqual(null);
@@ -74,7 +74,7 @@ describe('Device', function () {
       expect(device.inbound).toEqual([1, 5]);
     });
   });
-  xdescribe('loadAll', function () {
+  describe('loadAll', function () {
     it('should load all devices from the database', function (done) {
       db.expect('select * from devices', null, function (params) {
         var output = [
@@ -84,27 +84,28 @@ describe('Device', function () {
         return [output];
       });
 
-      Device.loadAll(db).then(function (devices) {
-        expect(devices.length).toEqual(2);
-        //0
-        expect(devices[0].deviceId).toEqual(1);
-        expect(devices[0].hardwareId).toEqual(4411);
-        expect(devices[0].nextTransactionId).toEqual(1);
-        expect(devices[0].confirmed).toEqual(0);
-        //1
-        expect(devices[1].deviceId).toEqual(3);
-        expect(devices[1].hardwareId).toEqual(4412);
-        expect(devices[1].nextTransactionId).toEqual(4);
-        expect(devices[1].confirmed).toEqual(1);
-      })
-        .finally(done);
+      Device.loadAll(db)
+        .success(function (devices) {
+          expect(devices.length).toEqual(2);
+          //0
+          expect(devices[0].deviceId).toEqual(1);
+          expect(devices[0].hardwareId).toEqual(4411);
+          expect(devices[0].nextTransactionId).toEqual(1);
+          expect(devices[0].confirmed).toEqual(0);
+          //1
+          expect(devices[1].deviceId).toEqual(3);
+          expect(devices[1].hardwareId).toEqual(4412);
+          expect(devices[1].nextTransactionId).toEqual(4);
+          expect(devices[1].confirmed).toEqual(1);
+          done();
+        });
     });
     it('should load the last 10 Transactions for all devices', function () {
 
     });
   });
-  xdescribe('save', function () {
-    it('should insert a new Device and assign [deviceId]', function () {
+  describe('save', function () {
+    it('should insert a new Device and assign [deviceId]', function (done) {
       var device = new Device({hardwareId: 32, nextTransactionId: 7, confirmed: 1});
       db.expect('insert into devices set ?', null, function (params) {
         expect(params).toEqual({hardwareId: 32, nextTransactionId: 7, confirmed: 1});
@@ -112,10 +113,12 @@ describe('Device', function () {
         output.insertId = 78;
         return [output];
       });
-      device.save(db);
-      expect(device.deviceId).toEqual(78);
+      device.save(db).success(function () {
+        expect(device.deviceId).toEqual(78);
+        done();
+      });
     });
-    it('should update an existing Device', function () {
+    it('should update an existing Device', function (done) {
       var device = new Device({deviceId: 55, hardwareId: 32, nextTransactionId: 7, confirmed: 1});
       db.expect('update devices set ? where deviceId = ?', null, function (params) {
         expect(params).toEqual([
@@ -124,9 +127,11 @@ describe('Device', function () {
         ]);
         return [];
       });
-      device.save(db);
+      device.save(db).success(function () {
+        done();
+      });
     });
-    it('should exclude fields that are not specified in in input fields list', function () {
+    it('should exclude fields that are not specified in in input fields list', function (done) {
       var device = new Device({deviceId: 55, hardwareId: 32, nextTransactionId: 7, confirmed: 1});
       db.expect('update devices set ? where deviceId = ?', null, function (params) {
         expect(params).toEqual([
@@ -135,11 +140,13 @@ describe('Device', function () {
         ]);
         return [];
       });
-      device.save(db, ['hardwareId']);
+      device.save(db, ['hardwareId']).success(function () {
+        done();
+      });
     });
   });
-  xdescribe('confirm', function () {
-    it('should set [confirmed] and save the Device', function () {
+  describe('confirm', function () {
+    it('should set [confirmed] and save the Device', function (done) {
       var device = new Device({deviceId: 55, hardwareId: 32, nextTransactionId: 7, confirmed: 1});
       db.expect('update devices set ? where deviceId = ?', null, function (params) {
         expect(params).toEqual([
@@ -150,23 +157,26 @@ describe('Device', function () {
         output.insertId = 78;
         return [output];
       });
-      device.save(db);
+      device.save(db).success(function () {
+        done();
+      });
     });
   });
-  xdescribe('loadTransactions', function () {
-    it('should load all Transactions for a device', function () {
+  describe('loadTransactions', function () {
+    it('should load all Transactions for a device', function (done) {
       var device = new Device({deviceId: 55});
-      device.loadTransactions(db).then(function () {
+      device.loadTransactions(db).success(function () {
         expect(device.outbound.length).toEqual(2);
         expect(device.outbound[0]).toEqual(new Outbound({ outboundId: 1, transactionId: 1, deviceId: 2, buffer: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6], time: [30, 400] }));
 
         expect(device.inbound.length).toEqual(2);
         expect(device.inbound[0]).toEqual(new Inbound({ inboundId: 1, transactionId: 1, deviceId: 2, buffer: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6], time: [40, 500], outboundId: 1, latency: [10, 100] }));
+        done();
       });
     });
   });
-  xdescribe('stampOutbound', function () {
-    it('should create a new [Outbound] transaction, save it to the db, add it to [Outbound] list and increase [nextTransactionId]', function () {
+  describe('stampOutbound', function () {
+    it('should create a new [Outbound] transaction, save it to the db, add it to [Outbound] list and increase [nextTransactionId]', function (done) {
       var device = new Device({deviceId: 55, nextTransactionId: 3, hrtime: Help.hrtime});
       db.expect('insert into outbound set ?', null, function (params) {
         expect(params).toEqual({transactionId: 3, deviceId: 55, buffer: '[1,2,3,4,5,6,7,8,9,0]', timeS: 100, timeNs: 2000});
@@ -175,13 +185,15 @@ describe('Device', function () {
         return [output];
       });
 
-      device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]).then(function () {
-        expect(device.outbound.length).toEqual(1);
-        expect(device.outbound[0]).toEqual(new Outbound({outboundId: 12, transactionId: 3, deviceId: 55, buffer: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], time: [100, 2000]}));
-        expect(device.nextTransactionId).toEqual(4);
-      });
+      device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0])
+        .success(function () {
+          expect(device.outbound.length).toEqual(1);
+          expect(device.outbound[0]).toEqual(new Outbound({outboundId: 12, transactionId: 3, deviceId: 55, buffer: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], time: [100, 2000]}));
+          expect(device.nextTransactionId).toEqual(4);
+          done();
+        });
     });
-    it('should push out old outbound items to maintain only the max outbound amount', function () {
+    it('should push out old outbound items to maintain only the max outbound amount', function (done) {
       var device = new Device({deviceId: 55, hrtime: Help.hrtime, maxOutbound: 3});
       Help.hrtimeVal = [1, 1];
       device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0])
@@ -191,16 +203,18 @@ describe('Device', function () {
         .then(device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]))
         .then(function () {
           Help.hrtimeVal = [3, 3];
-        }).then(device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]))
+        })
+        .then(device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]))
         .then(function () {
           expect(device.outbound.length).toEqual(3);
           Help.hrtimeVal = [4, 4];
         })
         .then(device.stampOutbound(db, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]))
-        .then(function () {
+        .success(function () {
           expect(device.outbound.length).toEqual(3);
           expect(device.outbound[0].time).toEqual([2, 2]);
           expect(device.outbound[2].time).toEqual([4, 4]);
+          done();
         });
     });
   });
@@ -228,18 +242,20 @@ describe('Device', function () {
           done();
         });
     });
-    xit('should push out old outbound items to maintain only the max outbound amount', function () {
+    it('should push out old inbound items to maintain only the max outbound amount', function (done) {
       var device = new Device({deviceId: 55, maxInbound: 3});
       device.stampInbound(db, 1, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], [1, 1])
         .then(device.stampInbound(db, 2, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], [2, 2]))
         .then(device.stampInbound(db, 3, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], [3, 3]))
         .then(function () {
           expect(device.inbound.length).toEqual(3);
-        }).then(device.stampInbound(db, 4, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], [4, 4]))
-        .then(function () {
+        })
+        .then(device.stampInbound(db, 4, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], [4, 4]))
+        .success(function () {
           expect(device.inbound.length).toEqual(3);
           expect(device.inbound[0].time).toEqual([2, 2]);
           expect(device.inbound[2].time).toEqual([4, 4]);
+          done();
         });
     });
   });
