@@ -218,6 +218,7 @@ describe('Promise', function () {
   });
 
   it('should emit [error] for reject without fail handler', function (done) {
+    Promise.removeAllListeners('error');
     Promise.on('error', function(input){
       expect(input.promise).toEqual(promise);
       expect(input.error instanceof Error).toEqual(true);
@@ -242,8 +243,9 @@ describe('Promise', function () {
           else {
             var diff = process.hrtime(start);
             var ns = diff[0] * 1e9 + diff[1];
-            var nsPerI = ns/iterations;
-            expect(nsPerI).toBeLessThan(10000);
+            var ms = ns / 1e6;
+            var msPerI = ms/iterations;
+            expect(msPerI).toBeLessThan(0.02);
             done();
           }
       });
