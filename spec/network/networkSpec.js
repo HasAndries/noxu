@@ -228,35 +228,22 @@ describe('Network', function () {
           });
       });
     });
-    xdescribe('[NETWORK_CONFIRM]', function () {
+    describe('[NETWORK_CONFIRM]', function () {
       it('should confirm the device and raise event [deviceConfirmNew] for an unconfirmed Device', function (done) {
-        db.when('insert into devices set ?', null, function (params) {
-          console.log('insert');
-          console.log(params);
-          var output = [];
-          output.insertId = nextDeviceId++;
-          return [output];
-        });
-        db.when('update devices set ? where deviceId = ?', null, function (params) {
-          console.log('update');
-          console.log(params);
-          return [];
-        });
         //event
         network.on('deviceConfirmNew', function (input) {
           expect(input.device.deviceId).toEqual(1);
         });
 
         //setup
-        NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).then(function (options) {
+        NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).success(function (input) {
           expect(network.devices.length).toEqual(1);
-          expect(network.devices[0]).toEqual(options.device);
+          expect(network.devices[0]).toEqual(input.device);
 
-          expect(options.device.deviceId).toEqual(1);
-          expect(options.device.hardwareId).toEqual(options.device.hardwareId);
-          expect(options.device.nextTransactionId).toEqual(2);
-          console.log(options.device);
-          expect(options.device.confirmed).toEqual(1);
+          expect(input.device.deviceId).toEqual(1);
+          expect(input.device.hardwareId).toEqual(input.device.hardwareId);
+          expect(input.device.nextTransactionId).toEqual(2);
+          expect(input.device.confirmed).toEqual(1);
           done();
         });
       });
@@ -264,36 +251,36 @@ describe('Network', function () {
         //event
         network.on('deviceConfirmExisting', function (input) {
           expect(input.device.deviceId).toEqual(1);
-          done();
         });
 
-        NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).then(NETWORK_CONFIRM).then(function (options) {
+        NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).then(NETWORK_CONFIRM).success(function (input) {
           expect(network.devices.length).toEqual(1);
-          expect(network.devices[0]).toEqual(options.device);
+          expect(network.devices[0]).toEqual(input.device);
 
-          expect(options.device.deviceId).toEqual(1);
-          expect(options.device.hardwareId).toEqual(options.device.hardwareId);
-          expect(options.device.nextTransactionId).toEqual(3);
-          expect(options.device.confirmed).toEqual(1);
+          expect(input.device.deviceId).toEqual(1);
+          expect(input.device.hardwareId).toEqual(input.device.hardwareId);
+          expect(input.device.nextTransactionId).toEqual(3);
+          expect(input.device.confirmed).toEqual(1);
+          done();
         });
       });
       it('should raise event [deviceInvalid] and send [NETWORK_INVALID] for an invalid Device', function (done) {
         //event
         network.on('deviceInvalid', function (input) {
-          expect(input.deviceId).toEqual(1);
-          done();
+          expect(input.deviceId).toEqual(55);
         });
-        NETWORK_CONFIRM({network: network}).then(function (options) {
+        NETWORK_CONFIRM({network: network, deviceId: 55}).success(function (input) {
           expect(network.devices.length).toEqual(0);
 
           //radio
           expect(network.radio.lastMessage.instruction).toEqual(Instructions.NETWORK_INVALID);
           expect(network.radio.lastMessage.networkId).toEqual(0);
           expect(network.radio.lastMessage.data).toEqual(null);
+          done();
         });
       });
-      it('should send [PING] for a new valid [NETWORK_CONFIRM]', function () {
-        NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).then(function (options) {
+      it('should send [PING] for a new valid [NETWORK_CONFIRM]', function (done) {
+        NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).success(function (input) {
           //inbound
           expect(network.devices[0].inbound.length).toEqual(1);
           expect(network.devices[0].inbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_CONFIRM);
@@ -308,15 +295,19 @@ describe('Network', function () {
           expect(network.radio.lastMessage.instruction).toEqual(Instructions.PING);
           expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
           expect(network.radio.lastMessage.sleep).toEqual(0);
+          done();
         });
       });
-      it('should send [WAKE] for a new valid [NETWORK_CONFIRM] that is Relayed', function () {
-        var message = new Message({instruction: Instructions.NETWORK_CONFIRM, networkId: network.config.networkId, deviceId: device.deviceId, isRelay: true});
+      it('should send [WAKE] for a new valid [NETWORK_CONFIRM] that is Relayed', function (done) {
+        var message = new Message({instruction: Instructions.NETWORK_CONFIRM, networkId: network.config.networkId, isRelay: true});
 
-        NETWORK_CONNECT({network: network}).then(function (options) {
-          return NETWORK_INBOUND(extend({message: message}, options));
-        }).then(function (options) {
+        NETWORK_CONNECT({network: network}).then(function (input) {
+          message.deviceId = input.deviceId;
+          input.message = message;
+          return NETWORK_INBOUND(input);
+        }).success(function (input) {
           //inbound
+          //console.log(network.devices[0]);
           expect(network.devices[0].inbound.length).toEqual(1);
           expect(network.devices[0].inbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_CONFIRM);
 
@@ -330,6 +321,7 @@ describe('Network', function () {
           expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
           expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
           expect(network.radio.lastMessage.sleep).toEqual(10);
+          done();
         });
       });
     });

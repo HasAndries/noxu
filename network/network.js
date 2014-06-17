@@ -336,14 +336,14 @@ Network.prototype._process[Instructions.NETWORK_CONFIRM] = function (message) {
         network.emit('deviceConfirmExisting', {device: device})
       }
       if (message.isRelay) {
-        sequence = sequence.then(network._getNextMessage(device).success(function (val) {
-          outbound = val;
-        }));
+        sequence = sequence.then(network._getNextMessage(device)).then(function (input) {
+          outbound = input;
+        });
       }
       else
         outbound = new Message({networkId: network.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: Instructions.PING});
       sequence.success(function () {
-        resolve(outbound)
+        resolve(outbound);
       });
     }
   });
