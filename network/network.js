@@ -287,8 +287,17 @@ Network.prototype._processGeneral = function (message) {
       resolve(outbound);
     }
     else {
-      outbound = message.isRelay && network._getNextMessage(device) || new Message({networkId: network.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: Instructions.PING});
-      resolve(outbound);
+      var sequence = Promise();
+      if (message.isRelay) {
+        sequence = sequence.then(network._getNextMessage(device)).then(function (input) {
+          outbound = input;
+        });
+      }
+      else
+        outbound = new Message({networkId: network.config.networkId, deviceId: message.deviceId, fromCommander: true, instruction: Instructions.PING});
+      sequence.success(function () {
+        resolve(outbound);
+      });
     }
   });
 };

@@ -325,39 +325,35 @@ describe('Network', function () {
         });
       });
     });
-    xdescribe('[PING_CONFIRM]', function () {
+    describe('[PING_CONFIRM]', function () {
       it('should raise event [pingConfirm] if message [isRelay]', function (done) {
-        //setup
-        var device = NETWORK_CONNECT(network);
-        NETWORK_CONFIRM(network, device.deviceId);
-
+        var message = new Message({instruction: Instructions.PING_CONFIRM, networkId: network.config.networkId, isRelay: true});
         //event
         network.on('pingConfirm', function (input) {
           expect(input.device.deviceId).toEqual(1);
-          done();
         });
 
-        //inbound [PING_CONFIRM]
-        var message = new Message({instruction: Instructions.PING_CONFIRM, networkId: network.config.networkId, deviceId: device.deviceId, isRelay: true});
-        network.radio.queue(message.toBuffer());
-        network._processInbound();
+        //setup
+        NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).then(function (input) {
+          message.deviceId = input.deviceId;
+          input.message = message;
+          return NETWORK_INBOUND(input);
+        }).success(function (input) {
+          //inbound
+          expect(network.devices[0].inbound.length).toEqual(2);
+          expect(network.devices[0].inbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_CONFIRM);
+          expect(network.devices[0].inbound[1].getMessage().instruction).toEqual(Instructions.PING_CONFIRM);
 
-        //inbound
-        expect(network.devices[0].inbound.length).toEqual(2);
-        expect(network.devices[0].inbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_CONFIRM);
-        expect(network.devices[0].inbound[1].getMessage().instruction).toEqual(Instructions.PING_CONFIRM);
-
-        //outbound
-        expect(network.devices[0].nextTransactionId).toEqual(2);
-        expect(network.devices[0].outbound.length).toEqual(2);
-        expect(network.devices[0].outbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_NEW);
-        expect(network.devices[0].outbound[1].getMessage().instruction).toEqual(Instructions.PING);
+          //outbound
+          expect(network.devices[0].nextTransactionId).toEqual(2);
+          expect(network.devices[0].outbound.length).toEqual(2);
+          expect(network.devices[0].outbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_NEW);
+          expect(network.devices[0].outbound[1].getMessage().instruction).toEqual(Instructions.PING);
+          done();
+        });
       });
       it('should raise [pingConfirm]+[deviceNextMessage] and send [Next Message] if message not [isRelay]', function (done) {
-        //setup
-        var device = NETWORK_CONNECT(network);
-        NETWORK_CONFIRM(network, device.deviceId);
-
+        var message = new Message({instruction: Instructions.PING_CONFIRM, networkId: network.config.networkId, isRelay: false});
         //event
         network.on('pingConfirm', function (input) {
           expect(input.device.deviceId).toEqual(1);
@@ -369,142 +365,137 @@ describe('Network', function () {
           done();
         });
 
-        //inbound [PING_CONFIRM]
-        var message = new Message({instruction: Instructions.PING_CONFIRM, networkId: network.config.networkId, deviceId: device.deviceId, isRelay: false});
-        network.radio.queue(message.toBuffer());
-        network._processInbound();
+        NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).then(function (input) {
+          message.deviceId = input.deviceId;
+          input.message = message;
+          return NETWORK_INBOUND(input);
+        }).success(function (input) {
+          //inbound
+          expect(network.devices[0].inbound.length).toEqual(2);
+          expect(network.devices[0].inbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_CONFIRM);
+          expect(network.devices[0].inbound[1].getMessage().instruction).toEqual(Instructions.PING_CONFIRM);
 
-        //inbound
-        expect(network.devices[0].inbound.length).toEqual(2);
-        expect(network.devices[0].inbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_CONFIRM);
-        expect(network.devices[0].inbound[1].getMessage().instruction).toEqual(Instructions.PING_CONFIRM);
+          //outbound
+          expect(network.devices[0].nextTransactionId).toEqual(3);
+          expect(network.devices[0].outbound.length).toEqual(3);
+          expect(network.devices[0].outbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_NEW);
+          expect(network.devices[0].outbound[1].getMessage().instruction).toEqual(Instructions.PING);
+          expect(network.devices[0].outbound[2].getMessage().instruction).toEqual(Instructions.WAKE);
 
-        //outbound
-        expect(network.devices[0].nextTransactionId).toEqual(3);
-        expect(network.devices[0].outbound.length).toEqual(3);
-        expect(network.devices[0].outbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_NEW);
-        expect(network.devices[0].outbound[1].getMessage().instruction).toEqual(Instructions.PING);
-        expect(network.devices[0].outbound[2].getMessage().instruction).toEqual(Instructions.WAKE);
-
-        //radio
-        expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
-        expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
+          //radio
+          expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
+          expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
+          done();
+        });
       });
     });
-    xdescribe('General', function () {
+    describe('General', function () {
       it('should raise event [deviceInvalid] if Device does not exist', function (done) {
-        //setup
-        var device = NETWORK_CONNECT(network);
-        NETWORK_CONFIRM(network, device.deviceId);
-
         //event
         network.on('deviceInvalid', function (input) {
           expect(input.deviceId).toEqual(5);
+        });
+        var message = new Message({instruction: Instructions.WAKE, networkId: 299, deviceId: 5});
+        NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).then(function (input) {
+          input.message = message;
+          return NETWORK_INBOUND(input);
+        }).success(function (input) {
           done();
         });
-
-        //inbound message
-        var message = new Message({instruction: Instructions.WAKE, networkId: 299, deviceId: 5});
-        network.radio.queue(message.toBuffer());
-        network._processInbound();
       });
-      it('should send [PING] if message is not relay', function () {
+      it('should send [PING] if message is not relay', function (done) {
+        var message = new Message({instruction: Instructions.WAKE, networkId: network.config.networkId, isRelay: false});
         //setup
-        var device = NETWORK_CONNECT(network);
-        NETWORK_CONFIRM(network, device.deviceId);
+        NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).then(function (input) {
+          message.deviceId = input.deviceId;
+          input.message = message;
+          return NETWORK_INBOUND(input);
+        }).success(function (input) {
+          //inbound
+          expect(network.devices[0].inbound.length).toEqual(2);
+          expect(network.devices[0].inbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_CONFIRM);
+          expect(network.devices[0].inbound[1].getMessage().instruction).toEqual(Instructions.WAKE);
 
-        //inbound message
-        var message = new Message({instruction: Instructions.WAKE, networkId: network.config.networkId, deviceId: device.deviceId, isRelay: false});
-        network.radio.queue(message.toBuffer());
-        network._processInbound();
+          //outbound
+          expect(network.devices[0].nextTransactionId).toEqual(3);
+          expect(network.devices[0].outbound.length).toEqual(3);
+          expect(network.devices[0].outbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_NEW);
+          expect(network.devices[0].outbound[1].getMessage().instruction).toEqual(Instructions.PING);
+          expect(network.devices[0].outbound[2].getMessage().instruction).toEqual(Instructions.PING);
 
-        //inbound
-        expect(network.devices[0].inbound.length).toEqual(2);
-        expect(network.devices[0].inbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_CONFIRM);
-        expect(network.devices[0].inbound[1].getMessage().instruction).toEqual(Instructions.WAKE);
-
-        //outbound
-        expect(network.devices[0].nextTransactionId).toEqual(3);
-        expect(network.devices[0].outbound.length).toEqual(3);
-        expect(network.devices[0].outbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_NEW);
-        expect(network.devices[0].outbound[1].getMessage().instruction).toEqual(Instructions.PING);
-        expect(network.devices[0].outbound[2].getMessage().instruction).toEqual(Instructions.PING);
-
-        //radio
-        expect(network.radio.lastMessage.instruction).toEqual(Instructions.PING);
-        expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
-        expect(network.radio.lastMessage.sleep).toEqual(0);
+          //radio
+          expect(network.radio.lastMessage.instruction).toEqual(Instructions.PING);
+          expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
+          expect(network.radio.lastMessage.sleep).toEqual(0);
+          done();
+        });
       });
-      it('should send [Next Message] if message is relay', function () {
+      it('should send [Next Message] if message is relay', function (done) {
+        var message = new Message({instruction: Instructions.WAKE, networkId: network.config.networkId, isRelay: true});
         //setup
-        var device = NETWORK_CONNECT(network);
-        NETWORK_CONFIRM(network, device.deviceId);
+        NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).then(function (input) {
+          message.deviceId = input.deviceId;
+          input.message = message;
+          return NETWORK_INBOUND(input);
+        }).success(function (input) {
+          //inbound
+          expect(network.devices[0].inbound.length).toEqual(2);
+          expect(network.devices[0].inbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_CONFIRM);
+          expect(network.devices[0].inbound[1].getMessage().instruction).toEqual(Instructions.WAKE);
 
-        //inbound message
-        var message = new Message({instruction: Instructions.WAKE, networkId: network.config.networkId, deviceId: device.deviceId, isRelay: true});
-        network.radio.queue(message.toBuffer());
-        network._processInbound();
+          //outbound
+          expect(network.devices[0].nextTransactionId).toEqual(3);
+          expect(network.devices[0].outbound.length).toEqual(3);
+          expect(network.devices[0].outbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_NEW);
+          expect(network.devices[0].outbound[1].getMessage().instruction).toEqual(Instructions.PING);
+          expect(network.devices[0].outbound[2].getMessage().instruction).toEqual(Instructions.WAKE);
 
-        //inbound
-        expect(network.devices[0].inbound.length).toEqual(2);
-        expect(network.devices[0].inbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_CONFIRM);
-        expect(network.devices[0].inbound[1].getMessage().instruction).toEqual(Instructions.WAKE);
-
-        //outbound
-        expect(network.devices[0].nextTransactionId).toEqual(3);
-        expect(network.devices[0].outbound.length).toEqual(3);
-        expect(network.devices[0].outbound[0].getMessage().instruction).toEqual(Instructions.NETWORK_NEW);
-        expect(network.devices[0].outbound[1].getMessage().instruction).toEqual(Instructions.PING);
-        expect(network.devices[0].outbound[2].getMessage().instruction).toEqual(Instructions.WAKE);
-
-        //radio
-        expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
-        expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
-        expect(network.radio.lastMessage.sleep).toEqual(10);
+          //radio
+          expect(network.radio.lastMessage.instruction).toEqual(Instructions.WAKE);
+          expect(network.radio.lastMessage.deviceId).toEqual(network.devices[0].deviceId);
+          expect(network.radio.lastMessage.sleep).toEqual(10);
+          done();
+        });
       });
 
     });
   });
   //========== send ==========
-  xdescribe('send', function () {
+  describe('send', function () {
     it('should raise event [outbound], increase the Device transactionId and send the message to the radio', function (done) {
-      //setup
-      var device = NETWORK_CONNECT(network);
-      NETWORK_CONFIRM(network, device.deviceId);
 
-      //event
-      network.on('outbound', function (input) {
-        expect(input.buffer.toJSON()).toEqual(message.toBuffer().toJSON());
+      var message = new Message({instruction: Instructions.PING, networkId: network.config.networkId, data: [1, 2]});
+      NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM).then(function (input) {
+        network.on('outbound', function (input) {
+          expect(input.buffer.toJSON()).toEqual(message.toBuffer().toJSON());
+        });
+        message.deviceId = input.deviceId;
+        return network.send(message, input.device);
+      }).success(function (input) {
+        expect(network.radio.lastMessage.toBuffer().toJSON()).toEqual(message.toBuffer().toJSON());
+        var deviceOutbound = network.devices[0].outbound[network.devices[0].outbound.length - 1];
+        expect(deviceOutbound.getMessage().toBuffer().toJSON()).toEqual(network.radio.lastMessage.toBuffer().toJSON());
         done();
       });
-
-      //send outbound pulse
-      var message = new Message({instruction: Instructions.PING, networkId: network.config.networkId, deviceId: device.deviceId, data: [1, 2]});
-      network.send(message, device);
-
-      expect(network.radio.lastMessage.toBuffer().toJSON()).toEqual(message.toBuffer().toJSON());
-      var deviceOutbound = network.devices[0].outbound[network.devices[0].outbound.length - 1];
-      expect(deviceOutbound.getMessage().toBuffer().toJSON()).toEqual(network.radio.lastMessage.toBuffer().toJSON());
     });
   });
 
   //========== socket.io ==========
   //---------- getDevices ----------
-  xdescribe('getDevices', function () {
-    it('should return list of devices', function () {
+  describe('getDevices', function () {
+    it('should return list of devices', function (done) {
       //setup
-      var device = NETWORK_CONNECT(network);
-      NETWORK_CONFIRM(network, device.deviceId);
-      device = NETWORK_CONNECT(network);
-      NETWORK_CONFIRM(network, device.deviceId);
-
-      var devices = network.getDevices();
-      expect(devices.length).toEqual(2);
-      expect(devices[1].deviceId).toEqual(2);
-      expect(devices[1].hardwareId).toEqual(device.hardwareId);
-      expect(devices[1].nextTransactionId).toEqual(2);
-      expect(devices[1].inbound.length).toEqual(1);
-      expect(devices[1].outbound.length).toEqual(2);
+      NETWORK_CONNECT({network: network}).then(NETWORK_CONFIRM)
+        .then(NETWORK_CONNECT({network: network})).then(NETWORK_CONFIRM).success(function(input){
+          var devices = network.getDevices();
+          expect(devices.length).toEqual(2);
+          expect(devices[1].deviceId).toEqual(2);
+          expect(devices[1].hardwareId).toEqual(input.device.hardwareId);
+          expect(devices[1].nextTransactionId).toEqual(2);
+          expect(devices[1].inbound.length).toEqual(1);
+          expect(devices[1].outbound.length).toEqual(2);
+          done();
+        });
     });
   });
 });
