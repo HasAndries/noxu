@@ -43,7 +43,12 @@ function Server(config) {
 
 
 Server.prototype.start = function(){
-  this.network.start();
+  var server = this;
+  server.network.init().then(server.network.start).success(function(){
+    console.log('network started');
+  }).fail(function(error){
+    console.log('network start failed: %s', error);
+  });
 };
 
 Server.prototype.notify = function (name, socket) {

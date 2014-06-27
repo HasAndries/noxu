@@ -116,7 +116,8 @@ Network.prototype.init = function () {
   return new Promise(function (resolve, reject) {
     //setup rf device
     if (RF24) {
-      var radio = new RF24(config.spiDev, config.pinCe);
+      console.log('initializing radio');
+      var radio = new RF24(network.config.spiDev, network.config.pinCe);
       network.radio = radio;
       radio.begin();
       radio.setPALevel(RF24.Power.max);
@@ -133,7 +134,9 @@ Network.prototype.init = function () {
       radio.printDetails();
     }
     //Load devices
+    console.log('Loading Devices');
     Device.loadAll(network.db).success(function (devices) {
+      console.log('Devices Loaded');
       network.devices = devices;
       resolve(network);
     }).fail(reject);

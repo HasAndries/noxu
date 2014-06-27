@@ -19,7 +19,10 @@ Device.loadAll = function (db) {
   return new Promise(function (resolve, reject) {
     var output = [];
     var sequence = [];
+    console.log('devices query');
     db.query('select * from devices', function (err, rows) {
+      console.log('devices callback');
+      console.log(rows);
       if (err) reject(err);
       for (var ct = 0; ct < rows.length; ct++) {
         var device = new Device({deviceId: rows[ct].deviceId, hardwareId: rows[ct].hardwareId, nextTransactionId: rows[ct].nextTransactionId, confirmed: rows[ct].confirmed});
