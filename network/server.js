@@ -44,7 +44,7 @@ function Server(config) {
 
 Server.prototype.start = function(){
   var server = this;
-  server.network.init().then(server.network.start).success(function(){
+  server.network.init().then(server.network.start()).success(function(){
     console.log('network started');
   }).fail(function(error){
     console.log('network start failed: %s', error);

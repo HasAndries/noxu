@@ -134,9 +134,7 @@ Network.prototype.init = function () {
       radio.printDetails();
     }
     //Load devices
-    console.log('Loading Devices');
     Device.loadAll(network.db).success(function (devices) {
-      console.log('Devices Loaded');
       network.devices = devices;
       resolve(network);
     }).fail(reject);
@@ -147,12 +145,15 @@ Network.prototype.init = function () {
  * Starts inbound processing
  */
 Network.prototype.start = function () {
-  this._startListen();
-  this.running = true;
-  var _this = this;
-  Fiber(function () {
-    _this._loop(_this);
-  }).run();
+  var network = this;
+  return new Promise(function (resolve) {
+    network._startListen();
+    network.running = true;
+    Fiber(function () {
+      network._loop(network);
+      resolve();
+    }).run();
+  });
 };
 
 /**
