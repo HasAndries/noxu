@@ -14,4 +14,7 @@ new Promise(function (resolve, reject) {
 }).success(function (input) {
     console.log('done');
     console.log(input);
+  }).fail(function(error){
+    console.log('error');
+    console.log(error);
   });

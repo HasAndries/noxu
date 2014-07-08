@@ -88,12 +88,12 @@ function Network(config, db) {
   EventEmitter.call(this);
   this.config = {
     networkId: 0,
-    bufferSize: 32,
+    bufferSize: 16,
     channel: 0x4c,
     dataRate: 0, //RF24.DataRate.kb1000,
     crcBytes: 2, //RF24.Crc.bit16,
-    retryCount: 10,
-    retryDelay: 100,
+    retryCount: 15,
+    retryDelay: 15,
     spiDev: '/dev/spidev0.0',
     pinCe: 25,
     inboundAddress: 0x00F0F0F0D2,
@@ -102,6 +102,8 @@ function Network(config, db) {
   extend(this.config, config || {});
   this.db = db;
   this.devices = [];
+  this.inbound = [];
+  this.outbound = [];
 }
 util.inherits(Network, EventEmitter);
 Network.prototype._process = [];//for inbound processing functions
@@ -213,6 +215,23 @@ Network.prototype.getDevices = function () {
   return extend([], this.devices);
 };
 //========== PRIVATE ==========
+Network.prototype._processRadio = function () {
+  var network = this;
+  if (network.listening) {
+    var avail = network.radio.available();
+    if (avail.any) {
+      var item = {
+        time: process.hrtime(),
+        buffer: new Buffer(network.config.bufferSize)
+      };
+      var data = network.radio.read();
+      item.buffer.fill(0);
+      data.copy(item.buffer);//todo: check for possible overflow
+      network.inbound.push(item);
+    }
+  }
+};
+
 Network.prototype._loop = function (_this) {
   //console.log('loop enter');
   var processing = false;
