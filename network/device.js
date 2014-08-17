@@ -84,7 +84,6 @@ Device.prototype.stampOutbound = function (db, buffer) {
       .then(function () {
         device.outbound.push(outbound);
         if (device.outbound.length > device.maxOutbound) device.outbound.splice(0, device.outbound.length - device.maxOutbound);
-        device.nextTransactionId++;
       })
       .then(device.save(db, ['nextTransactionId']))
       .success(function () {
@@ -112,5 +111,17 @@ Device.prototype.stampInbound = function (db, transactionId, buffer, time) {
     }).fail(reject);
   });
 };
+Device.prototype.getTransactionId = function (db) {
+  var device = this;
+  return new Promise(function (resolve, reject) {
+    var output = device.nextTransactionId;
+    device.nextTransactionId++;
+    device.save(db, ['nextTransactionId'])
+      .success(function () {
+        resolve(output);
+      }).fail(reject);
+  });
+};
+
 
 module.exports = Device;

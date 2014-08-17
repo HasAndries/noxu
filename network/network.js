@@ -104,6 +104,7 @@ function Network(config, db) {
   this.devices = [];
   this.inbound = [];
   this.outbound = [];
+  this.outboundProcessed = [];
 }
 util.inherits(Network, EventEmitter);
 Network.prototype._process = [];//for inbound processing functions
@@ -152,7 +153,11 @@ Network.prototype.start = function () {
     network._startListen();
     network.running = true;
     Fiber(function () {
-      network._loop(network);
+      network._processNetworkLoop(network);
+      resolve();
+    }).run();
+    Fiber(function () {
+      network._processRadioLoop(network);
       resolve();
     }).run();
   });
@@ -173,37 +178,23 @@ Network.prototype.stop = function () {
  */
 Network.prototype.send = function (message, device) {
   var network = this;
-
-  function start() {
-    if (network.running) network._startListen();
-  }
-
-  return new Promise(function (resolve, reject) {
-    if (!message) {
-      resolve();
-      return;
-    }
+  return new Promise(function(resolve, reject){
     var sequence = Promise();
-    device = device || network._getDevice(message.deviceId);
-    //stop inbound
-    if (network.running) network._stopListen();
-    if (device) message.transactionId = device.nextTransactionId;
-    var buffer = message.toBuffer();
-    //write message
-    if (network.radio) {
-      network.radio.write(buffer);
+    if (device){
+      sequence = sequence
+        .then(device.getTransactionId(network.db))
+        .then(function(transactionId){
+          message.deviceId = device.deviceId;
+          message.transactionId = transactionId;
+        });
     }
-    if (device) sequence = sequence.then(device.stampOutbound(network.db, buffer.toByteArray()));
-    sequence.success(function () {
-      network.emit('outbound', {device: device, buffer: buffer, message: message});
-      //start inbound
-      start();
-      resolve(message)
-    }).fail(function (val) {
-      console.log('send: %s', val.stack);
-      start();
-      reject(val);
-    });
+    sequence.then(function(){
+      network.outbound.push({
+        deviceId: message.deviceId,
+        transactionId: message.transactionId,
+        buffer: message.toBuffer()
+      });
+    }).success(resolve).fail(reject);
   });
 };
 
@@ -213,50 +204,6 @@ Network.prototype.send = function (message, device) {
  */
 Network.prototype.getDevices = function () {
   return extend([], this.devices);
-};
-//========== PRIVATE ==========
-Network.prototype._processRadio = function () {
-  var network = this;
-  if (network.listening) {
-    var avail = network.radio.available();
-    if (avail.any) {
-      var item = {
-        time: process.hrtime(),
-        buffer: new Buffer(network.config.bufferSize)
-      };
-      var data = network.radio.read();
-      item.buffer.fill(0);
-      data.copy(item.buffer);//todo: check for possible overflow
-      network.inbound.push(item);
-    }
-  }
-};
-
-Network.prototype._loop = function (_this) {
-  //console.log('loop enter');
-  var processing = false;
-  while (_this.running) {
-    if (!processing) {
-      processing = true;
-      _this._processInbound().success(function () {
-        processing = false;
-      }).fail(function (error) {
-        processing = false;
-        console.log('_loop: %s', error.stack);
-      });
-    }
-    sleep(5);
-  }
-};
-Network.prototype._startListen = function () {
-  if (this.listening) return;
-  this.radio.startListening();
-  this.listening = true;
-};
-Network.prototype._stopListen = function () {
-  if (!this.listening) return;
-  this.radio.stopListening();
-  this.listening = false;
 };
 Network.prototype._getNextMessage = function (device) {
   var network = this;
@@ -268,32 +215,113 @@ Network.prototype._getNextMessage = function (device) {
     resolve(outbound);
   });
 };
-//==================== Inbound ====================
-Network.prototype._processInbound = function () {
+//========== PRIVATE ==========
+//==================== Radio ====================
+Network.prototype._startListen = function () {
+  if (this.listening) return;
+  this.radio.startListening();
+  this.listening = true;
+};
+Network.prototype._stopListen = function () {
+  if (!this.listening) return;
+  this.radio.stopListening();
+  this.listening = false;
+};
+Network.prototype._processRadioLoop = function (_this) {
+  var processing = false;
+  while (_this.running) {
+    if (!processing) {
+      processing = true;
+      _this._processRadio().success(function () {
+        processing = false;
+      }).fail(function (error) {
+        processing = false;
+        console.log('_processRadioLoop: %s', error.stack);
+      });
+    }
+    sleep(5);
+  }
+};
+Network.prototype._processRadio = function () {
   var network = this;
   return new Promise(function (resolve, reject) {
-    var sequence = Promise();
-    if (network.listening) {
-      var avail = network.radio.available();
-      if (avail.any) {
-        var time = process.hrtime();
-        var data = network.radio.read();
-        var buffer = new Buffer(network.config.bufferSize);
-        buffer.fill(0);
-        data.copy(buffer);//todo: check for possible overflow
-        var message = new Message({buffer: data, bufferSize: network.config.bufferSize});
-        if (message.validate()) {
-          var device = network._getDevice(message.deviceId);
-          network.emit('inbound', {device: device, buffer: buffer, message: message});
-          var inbound = network._process[message.instruction] || network._processGeneral;
-          if (device) sequence = sequence.then(device.stampInbound(network.db, message.transactionId, buffer.toByteArray(), time));
-          sequence = sequence
-            .then(inbound.bind(network)(message))//process inbound
-            .then(new Promise(function (resolve, reject) {//send outbound
-              network.send(this.inputVal, device).success(resolve).fail(reject);
-            }));
+    try {
+      var received = false;
+      //process inbound
+      if (network.listening) {
+        var avail = network.radio.available();
+        if (avail.any) {
+          var time = process.hrtime();
+          received = true;
+          var inbound = {
+            time: time,
+            buffer: new Buffer(network.config.bufferSize)
+          };
+          var data = network.radio.read();
+          inbound.buffer.fill(0);
+          data.copy(inbound.buffer);//todo: check for possible overflow
+          network.inbound.push(inbound);
         }
       }
+      //process outbound if nothing received to give inbound priority
+      if (!received && network.outbound.length) {
+        var outbound = network.outbound.shift();
+
+        if (network.running) network._stopListen();
+        if (network.radio) network.radio.write(outbound.buffer);
+        outbound.time = process.hrtime();
+        if (network.running) network._startListen();
+
+        network.outboundProcessed.push(outbound);
+      }
+      resolve();
+    }
+    catch (e) {
+      reject(e);
+    }
+  });
+};
+//==================== Inbound ====================
+Network.prototype._processNetworkLoop = function (_this) {
+  var processing = false;
+  while (_this.running) {
+    if (!processing) {
+      processing = true;
+      _this._processNetwork().success(function () {
+        processing = false;
+      }).fail(function (error) {
+        processing = false;
+        console.log('_processInboundLoop: %s', error.stack);
+      });
+    }
+    sleep(5);
+  }
+};
+Network.prototype._processNetwork = function () {
+  var network = this;
+  return new Promise(function (resolve, reject) {
+    var promises = [];
+    if (network.inbound.length) {//inbound
+      var sequence = Promise();
+      var inbound = network.inbound.shift();
+      var message = new Message({buffer: inbound.buffer, bufferSize: network.config.bufferSize});
+      if (message.validate()) {
+        var device = network._getDevice(message.deviceId);
+        network.emit('inbound', {device: device, buffer: buffer, message: message});
+        var inbound = network._process[message.instruction] || network._processGeneral;
+        if (device) sequence = sequence.then(device.stampInbound(network.db, message.transactionId, buffer.toByteArray(), inbound.time));
+        sequence = sequence
+          .then(inbound.bind(network)(message))//process message
+          .then(network.send(this.inputVal, device));//send outbound
+      }
+      promises.push(sequence);
+    }
+    if (network.outboundProcessed.length){//outbound completed
+      var sequence = Promise();
+      var outbound = network.outboundProcessed.shift();
+      var device = network._getDevice(outbound.deviceId);
+      device.stampOutbound()
+
     }
     sequence.success(resolve).fail(reject);
   });
