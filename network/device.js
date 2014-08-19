@@ -76,10 +76,10 @@ Device.prototype.loadTransactions = function (db) {
     }).fail(reject);
   });
 };
-Device.prototype.stampOutbound = function (db, buffer) {
+Device.prototype.stampOutbound = function (db, buffer, time) {
   var device = this;
   return new Promise(function (resolve, reject) {
-    var outbound = new Outbound({transactionId: device.nextTransactionId, deviceId: device.deviceId, buffer: buffer, time: device.hrtime()});
+    var outbound = new Outbound({transactionId: device.nextTransactionId, deviceId: device.deviceId, buffer: buffer, time: time || device.hrtime()});
     outbound.save(db)
       .then(function () {
         device.outbound.push(outbound);

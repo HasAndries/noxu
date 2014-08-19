@@ -178,17 +178,17 @@ Network.prototype.stop = function () {
  */
 Network.prototype.send = function (message, device) {
   var network = this;
-  return new Promise(function(resolve, reject){
+  return new Promise(function (resolve, reject) {
     var sequence = Promise();
-    if (device){
+    if (device) {
       sequence = sequence
         .then(device.getTransactionId(network.db))
-        .then(function(transactionId){
+        .then(function (transactionId) {
           message.deviceId = device.deviceId;
           message.transactionId = transactionId;
         });
     }
-    sequence.then(function(){
+    sequence.then(function () {
       network.outbound.push({
         deviceId: message.deviceId,
         transactionId: message.transactionId,
@@ -307,23 +307,25 @@ Network.prototype._processNetwork = function () {
       var message = new Message({buffer: inbound.buffer, bufferSize: network.config.bufferSize});
       if (message.validate()) {
         var device = network._getDevice(message.deviceId);
-        network.emit('inbound', {device: device, buffer: buffer, message: message});
-        var inbound = network._process[message.instruction] || network._processGeneral;
-        if (device) sequence = sequence.then(device.stampInbound(network.db, message.transactionId, buffer.toByteArray(), inbound.time));
+        network.emit('inbound', {device: device, buffer: inbound.buffer, message: message});
+        var processor = network._process[message.instruction] || network._processGeneral;
+        if (device) sequence = sequence.then(device.stampInbound(network.db, message.transactionId, inbound.buffer.toByteArray(), inbound.time));
         sequence = sequence
-          .then(inbound.bind(network)(message))//process message
-          .then(network.send(this.inputVal, device));//send outbound
+          .then(processor.bind(network)(message))//process message
+          .then(new Promise(function (resolve, reject) {//send outbound
+            network.send(this.inputVal, device).success(resolve).fail(reject);
+          }));
       }
       promises.push(sequence);
     }
-    if (network.outboundProcessed.length){//outbound completed
+    if (network.outboundProcessed.length) {//outbound completed
       var sequence = Promise();
       var outbound = network.outboundProcessed.shift();
       var device = network._getDevice(outbound.deviceId);
-      device.stampOutbound()
-
+      sequence = sequence.then(device.stampOutbound(network.db, outbound.buffer, outbound.time));
+      promises.push(sequence);
     }
-    sequence.success(resolve).fail(reject);
+    Promise.all(promises).success(resolve).fail(reject);
   });
 };
 //---------- processGeneral ----------

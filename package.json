@@ -18,7 +18,8 @@
     "fibers": "1.x",
     "node.extend": "1.x",
     "mysql": "2.x",
-    "bluebird": "1.x"
+    "socket.io": "x"
+
   },
   "devDependencies":{
     "grunt": "0.4.x",
