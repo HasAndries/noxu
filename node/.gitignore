@@ -1,0 +1,8 @@
+Debug
+Visual\ Micro/
+*.sdf
+*.opensdf
+*.suo
+**/*.vcxproj.user
+~AutoRecover.*
+npm-debug.log

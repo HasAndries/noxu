@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "noxu_node", "noxu_node\noxu_node.vcxproj", "{2F4D7E27-4C66-47F6-A965-C795AF767F68}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "device", "device\device.vcxproj", "{7C63DF57-C964-47CD-94CB-59019A639993}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "collector", "collector\collector.vcxproj", "{9BBD4B5B-341C-4B5E-AFAC-A8A83B328EA0}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "noxu_library", "noxu_library\noxu_library.vcxproj", "{A761BE75-DCB8-4BCB-91AC-E05ED1769B6A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2F4D7E27-4C66-47F6-A965-C795AF767F68}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2F4D7E27-4C66-47F6-A965-C795AF767F68}.Debug|Win32.Build.0 = Debug|Win32
+		{2F4D7E27-4C66-47F6-A965-C795AF767F68}.Release|Win32.ActiveCfg = Release|Win32
+		{2F4D7E27-4C66-47F6-A965-C795AF767F68}.Release|Win32.Build.0 = Release|Win32
+		{7C63DF57-C964-47CD-94CB-59019A639993}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7C63DF57-C964-47CD-94CB-59019A639993}.Debug|Win32.Build.0 = Debug|Win32
+		{7C63DF57-C964-47CD-94CB-59019A639993}.Release|Win32.ActiveCfg = Release|Win32
+		{7C63DF57-C964-47CD-94CB-59019A639993}.Release|Win32.Build.0 = Release|Win32
+		{9BBD4B5B-341C-4B5E-AFAC-A8A83B328EA0}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9BBD4B5B-341C-4B5E-AFAC-A8A83B328EA0}.Debug|Win32.Build.0 = Debug|Win32
+		{9BBD4B5B-341C-4B5E-AFAC-A8A83B328EA0}.Release|Win32.ActiveCfg = Release|Win32
+		{9BBD4B5B-341C-4B5E-AFAC-A8A83B328EA0}.Release|Win32.Build.0 = Release|Win32
+		{A761BE75-DCB8-4BCB-91AC-E05ED1769B6A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A761BE75-DCB8-4BCB-91AC-E05ED1769B6A}.Debug|Win32.Build.0 = Debug|Win32
+		{A761BE75-DCB8-4BCB-91AC-E05ED1769B6A}.Release|Win32.ActiveCfg = Release|Win32
+		{A761BE75-DCB8-4BCB-91AC-E05ED1769B6A}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
